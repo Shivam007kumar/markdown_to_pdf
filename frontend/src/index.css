@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  background-color: #f8fafc;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  width: 100%;
+}
+
+/* Preview styling to match backend logic as closely as possible */
+.preview-container {
+  font-family: 'Barlow', sans-serif;
+  line-height: 1.6;
+}
+
+.preview-container h1, 
+.preview-container h2, 
+.preview-container h3 {
+  color: #2c3e50;
+  margin-top: 1.5em;
+  font-weight: 700;
+}
+
+.preview-container h1 { font-size: 2.25rem; border-bottom: 2px solid #eee; padding-bottom: 0.3rem; }
+.preview-container h2 { font-size: 1.875rem; }
+.preview-container h3 { font-size: 1.5rem; }
+
+.preview-container p { margin: 1em 0; }
+
+.preview-container pre {
+  background: #2d2d2d;
+  color: #f8f8f2;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-family: 'Fira Code', monospace;
+}
+
+.preview-container code:not(pre code) {
+  background: #f1f5f9;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.25rem;
+  font-family: 'Fira Code', monospace;
+}
+
+.preview-container blockquote {
+  border-left: 4px solid #e2e8f0;
+  padding-left: 1rem;
+  font-style: italic;
+  color: #64748b;
+}
+
+.preview-container table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5em 0;
+}
+
+.preview-container th, 
+.preview-container td {
+  border: 1px solid #e2e8f0;
+  padding: 0.5rem 1rem;
+  text-align: left;
+}
+
+.preview-container tr:nth-child(even) {
+  background-color: #f8fafc;
+}
+
+/* List Indentation Fixes */
+.preview-container ul {
+  list-style-type: disc;
+  padding-left: 2rem;
+  margin: 1em 0;
+}
+
+.preview-container ol {
+  list-style-type: decimal;
+  padding-left: 2rem;
+  margin: 1em 0;
+}
+
+.preview-container li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.preview-container ul ul,
+.preview-container ul ol,
+.preview-container ol ul,
+.preview-container ol ol {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Math Spacing Fixes */
+.preview-container .katex-display {
+  margin: 1.5em 0;
+  padding: 0.5em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.preview-container .katex {
+  font-size: 1.05em;
+  padding: 0 0.1em;
+}

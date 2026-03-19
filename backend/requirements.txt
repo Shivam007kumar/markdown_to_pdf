@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+markdown-it-py
+linkify-it-py
+mdit-py-plugins
+weasyprint
+pytest
+requests
+boto3
+httpx
+python-dotenv
