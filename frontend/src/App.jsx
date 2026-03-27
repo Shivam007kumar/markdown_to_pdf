@@ -22,8 +22,8 @@ function App() {
       {/* Header */}
       <header className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
-            <img src="/docs.png" alt="MD2PDF Logo" className="w-full h-full object-contain drop-shadow-sm" />
+          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-white p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
+            <img src="/docs_white.png" alt="MD2PDF Logo" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">MD2PDF</h1>
         </div>
