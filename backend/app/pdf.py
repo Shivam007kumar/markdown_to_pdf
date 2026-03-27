@@ -2,14 +2,11 @@ from weasyprint import HTML
 import ssl
 import os
 
-# Fix: Gate the macOS Python SSL certificate bypass behind a development flag for security
-if os.getenv("ALLOW_INSECURE_SSL", "false").lower() == "true":
-    try:
-        _create_unverified_https_context = ssl._create_unverified_context
-    except AttributeError:
-        pass
-    else:
-        ssl._create_default_https_context = _create_unverified_https_context
+# Fix: Guarantee proper SSL resolution on macOS and production environments
+# using certifi's bundled CA certificates securely instead of an insecure bypass.
+import certifi
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+ssl._create_default_https_context = lambda: ssl_context
 
 from weasyprint import default_url_fetcher
 from urllib.parse import urlparse
@@ -40,4 +37,4 @@ def to_pdf(html_content: str, stylesheet: str = None) -> bytes:
         from weasyprint import CSS
         stylesheets.append(CSS(string=stylesheet))
     
-    return HTML(string=html_content).write_pdf(stylesheets=stylesheets, url_fetcher=safe_url_fetcher)
+    return HTML(string=html_content, url_fetcher=safe_url_fetcher).write_pdf(stylesheets=stylesheets)
