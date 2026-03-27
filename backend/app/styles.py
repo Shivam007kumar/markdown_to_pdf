@@ -5,13 +5,18 @@ def get_base_styles() -> str:
     return """
     @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&family=Fira+Code&display=swap');
 
+    @page {
+        size: A4;
+        margin: 15mm;
+    }
+
     body {
         font-family: 'Barlow', sans-serif;
+        font-size: 11pt;
         line-height: 1.6;
         color: #333;
-        max-width: 800px;
-        margin: 40px auto;
-        padding: 0 20px;
+        margin: 0;
+        padding: 0;
     }
 
     h1, h2, h3, h4, h5, h6 {

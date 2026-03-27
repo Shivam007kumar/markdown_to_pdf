@@ -1,6 +1,5 @@
 import React from 'react';
 import CodeMirror from '@uiw/react-codemirror';
-import { StreamLanguage } from '@codemirror/language';
 import { css } from '@codemirror/lang-css';
 
 function CSSEditor({ value, onChange }) {
