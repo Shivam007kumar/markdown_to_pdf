@@ -3,7 +3,7 @@ import Editor from './components/Editor';
 import Preview from './components/Preview';
 import CSSEditor from './components/CSSEditor';
 import ExportButton from './components/ExportButton';
-import { Type, Code, Eye, FileText } from 'lucide-react';
+import { Type, Code, Eye, FileText, Github } from 'lucide-react';
 
 function App() {
   const [markdown, setMarkdown] = useState('# Hello Markdown\n\nEdit me to see live preview!\n\n$$x^2 + y^2 = z^2$$');
@@ -21,14 +21,24 @@ function App() {
     <div className="flex flex-col h-screen bg-white font-sans text-slate-900 overflow-hidden">
       {/* Header */}
       <header className="flex justify-between items-center px-6 py-4 border-b border-slate-200">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-slate-900 rounded-lg">
-            <FileText className="w-5 h-5 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
+            <img src="/docs.png" alt="MD2PDF Logo" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">MD2PDF</h1>
+          <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">MD2PDF</h1>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-6">
+          <a
+            href="https://github.com/Shivam007kumar/markdown_to_pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors group"
+            title="Star us on GitHub!"
+          >
+            <Github className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline">Star on GitHub</span>
+          </a>
           <ExportButton markdown={markdown} customCss={customCss} />
         </div>
       </header>
