@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import uuid
+import os
 from dotenv import load_dotenv
 
 # Fix: Initialize Dotenv perfectly once at startup
@@ -10,6 +11,19 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+from app.convert import convert
+from app.pdf import to_pdf
+from app.styles import build_styles
+from app.s3 import upload_to_s3, get_presigned_url
+
 
 app = FastAPI()
 
