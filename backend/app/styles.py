@@ -32,15 +32,19 @@ def get_base_styles() -> str:
         background: #2d2d2d;
         color: #f8f8f2;
         border-radius: 4px;
+        font-size: 0.85em;
     }
 
     code {
         padding: 0.2em 0.4em;
+        word-break: break-all;
     }
 
     pre {
         padding: 1em;
-        overflow-x: auto;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
+        word-break: break-all !important;
     }
 
     blockquote {
