@@ -8,6 +8,14 @@ import certifi
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 ssl._create_default_https_context = lambda: ssl_context
 
+import urllib.request
+class ChromeRequest(urllib.request.Request):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_header('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
+
+urllib.request.Request = ChromeRequest
+
 from weasyprint import default_url_fetcher
 from urllib.parse import urlparse
 import logging
