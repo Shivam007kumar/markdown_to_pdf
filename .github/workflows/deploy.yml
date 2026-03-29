@@ -16,7 +16,10 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           cd /home/ubuntu/markdown_to_pdf
-          git pull origin main
+          
+          # Force sync: abandon any accidental local changes on the EC2
+          git fetch origin
+          git reset --hard origin/main
           
           # Rebuild Frontend
           cd frontend
