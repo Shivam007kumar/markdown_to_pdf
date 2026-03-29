@@ -1,0 +1,33 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: SSH into EC2 and update Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /home/ubuntu/markdown_to_pdf
+          git pull origin main
+          
+          # Rebuild Frontend
+          cd frontend
+          npm install
+          npm run build
+          
+          # Update Backend
+          cd ../backend
+          source venv/bin/activate
+          pip install -r requirements.txt
+          
+          # Restart Services
+          sudo systemctl restart md2pdf-api
+          sudo systemctl restart caddy
