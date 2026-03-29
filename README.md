@@ -1,58 +1,217 @@
-# 📄 MD2PDF: The Ultimate Markdown Exporter
+<div align="center">
 
-Welcome to MD2PDF. This README serves not only as documentation but as the ultimate stress-test for our Markdown-to-PDF rendering pipeline!
+<img src="docs.png" alt="MD2PDF Logo" width="100" />
 
-## ✨ Core Features
+# MD2PDF
 
-- **Live Preview**: Real-time rendering with React.
-- **Robust S3 Storage**: Secure Cloud integration via Boto3.
-- **Advanced Engine**: Powered by WeasyPrint and FastAPI.
+**Convert Markdown into beautiful, print-ready PDFs — instantly.**
 
----
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-md2pdf--by.shivam007.dev-black?style=for-the-badge&logo=vercel)](https://md2pdf-by.shivam007.dev)
+[![GitHub Stars](https://img.shields.io/github/stars/Shivam007kumar/markdown_to_pdf?style=for-the-badge&logo=github&color=black)](https://github.com/Shivam007kumar/markdown_to_pdf/stargazers)
+[![License: MIT](https://img.shields.io/badge/License-MIT-black?style=for-the-badge)](LICENSE)
 
-## 🧮 Advanced Mathematical Rendering (KaTeX)
-
-We support both inline math seamlessly integrated into text, like Euler's identity $e^{i\pi} + 1 = 0$, as well as highly complex block equations isolated for emphasis.
-
-**The Navier-Stokes Equation:**
-$$ \rho \left( \frac{\partial \mathbf{v}}{\partial t} + \mathbf{v} \cdot \nabla \mathbf{v} \right) = -\nabla p + \mu \nabla^2 \mathbf{v} + \mathbf{f} $$
+</div>
 
 ---
 
-## 📊 Data Formatting (Tables)
+## What is MD2PDF?
 
-| Model | Accuracy | Training Time | Parameters | Optimization |
-| :--- | :---: | :---: | :---: | :---: |
-| Model A | 98.2% | 45 mins | 120M | AdamW |
-| Model B | 96.5% | 15 mins | 45M | RMSprop |
-| Model C | **99.1%** | 2 hours | 350M | SGD |
+MD2PDF is a clean, fast, browser-based tool that turns your Markdown into a polished PDF in seconds. Paste your content, tweak the styling with custom CSS, and hit export. That's it.
+
+No accounts. No installs. No friction.
+
+> **Try it live → [md2pdf-by.shivam007.dev](https://md2pdf-by.shivam007.dev)**
 
 ---
 
-## 🖥️ Code Snippets
+## Features
 
-```python
-def calculate_entropy(probabilities: list[float]) -> float:
-    """
-    Calculates the Shannon entropy of a given probability distribution.
-    """
-    import math
-    return -sum(p * math.log2(p) for p in probabilities if p > 0)
+- **Live Preview** — See your rendered Markdown update in real time as you type
+- **Custom CSS** — Override any style with your own CSS, right in the browser
+- **LaTeX Math** — Inline and block math expressions rendered via `$...$` and `$$...$$`
+- **Diagrams** — Mermaid, PlantUML, D2, Graphviz, and more via [Kroki](https://kroki.io)
+- **GFM Support** — Tables, strikethrough, task lists, and all GitHub Flavored Markdown
+- **Syntax Highlighting** — Code blocks rendered with Fira Code on a dark background
+- **Mobile Friendly** — Fully responsive with a dedicated mobile editing flow
+- **Rate Limited & Secure** — SSRF protection, payload limits, and 10 req/min rate limiting baked in
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite, Tailwind CSS, CodeMirror 6 |
+| Backend | FastAPI, WeasyPrint, markdown-it-py |
+| Storage | AWS S3 (presigned URLs for downloads) |
+| Diagrams | Kroki API (POST-based, handles large diagrams) |
+| Math | LaTeX.codecogs.com (PNG rendering) |
+| Rate Limiting | SlowAPI (10 requests/minute per IP) |
+| Deployment | AWS EC2 (Graviton), Caddy, Cloudflare Tunnels, GitHub Actions |
+
+---
+
+## How It Works
+
+```
+Markdown Input
+     │
+     ▼
+[Diagram blocks] ──► Kroki API ──► Embedded PNG
+[Math blocks]    ──► codecogs  ──► Embedded PNG
+[Markdown]       ──► markdown-it-py ──► HTML
+     │
+     ▼
+WeasyPrint (HTML + CSS → PDF bytes)
+     │
+     ▼
+Upload to S3 ──► Presigned URL ──► Browser Download
 ```
 
+1. The frontend sends your Markdown + custom CSS to the `/export` endpoint
+2. The backend converts diagrams and math to embedded images first
+3. WeasyPrint renders the full HTML+CSS document to PDF
+4. The PDF is uploaded to S3 and a short-lived presigned URL is returned
+5. Your browser opens the download link automatically
+
 ---
 
-## 📈 Mermaid Diagrams
+## Running Locally
 
-Our system natively intercepts Mermaid syntax, fetches high-resolution SVGs via `mermaid.ink` API, and elegantly embeds them without JavaScript dependencies inside the final PDF wrapper.
+### Prerequisites
 
+- Python 3.11+
+- Node.js 18+
+- An S3-compatible bucket (AWS S3 or any compatible provider)
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env   # fill in your S3 credentials
+uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env   # set VITE_API_URL if needed
+npm run dev
+```
+
+The app will be available at `http://localhost:5173`.
+
+---
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+| Variable | Description |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | S3 access key |
+| `AWS_SECRET_ACCESS_KEY` | S3 secret key |
+| `AWS_REGION` | S3 bucket region |
+| `S3_BUCKET_NAME` | Target bucket name |
+
+---
+
+## Supported Diagram Types
+
+MD2PDF supports fenced code blocks with the following diagram languages:
+
+````markdown
 ```mermaid
 graph TD
-    A[Markdown Input] --> B{FastAPI Parser}
-    B -->|Convert| C[HTML & SVG]
-    C -->|WeasyPrint| D[High-Res PDF]
-    D -->|Boto3| E[(AWS S3 Bucket)]
-    E -->|Pre-Signed URL| F[Client Download]
+  A --> B --> C
+```
+````
+
+| Language | Renderer |
+|---|---|
+| `mermaid` | Kroki |
+| `plantuml` | Kroki |
+| `d2` | Kroki |
+| `graphviz` | Kroki |
+| `excalidraw` | Kroki |
+| `structurizr` | Kroki |
+
+---
+
+## Math Support
+
+Inline math: `$x^2 + y^2 = z^2$`
+
+Block math:
+```
+$$
+\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}
+$$
+```
+
+Both are rendered as high-DPI PNG images embedded directly in the PDF.
+
+---
+
+## Security
+
+- **SSRF Protection** — WeasyPrint's URL fetcher is restricted to an explicit allowlist (`kroki.io`, `latex.codecogs.com`, Google Fonts). All `file://` and unknown hosts are blocked.
+- **Payload Limits** — Markdown capped at 1MB, CSS at 100KB, generated PDF at 20MB.
+- **Rate Limiting** — 10 exports per minute per IP via SlowAPI.
+- **No credentials in CORS** — Wildcard origins are used without `allow_credentials`.
+
+---
+
+## Deployment Architecture
+
+The live demo (`md2pdf-by.shivam007.dev`) is fully deployed using a modern, low-cost single-box architecture:
+
+- **Server:** AWS EC2 `t4g.small` (ARM64)
+- **Web Server:** Caddy Reverse Proxy
+- **Ingress:** Cloudflare Zero Trust Tunnels (No open web ports aside from SSH)
+- **Process Manager:** Systemd for Uvicorn background execution
+- **CI/CD:** Fully automated via **GitHub Actions** (`.github/workflows/deploy.yml`). Any push to `main` automatically SSHs into the instance, aggressively syncs the codebase, rebuilds the Vite frontend, and restarts the backend API.
+
+---
+
+## Project Structure
+
+```
+├── backend/
+│   ├── app/
+│   │   ├── main.py       # FastAPI app, /export endpoint
+│   │   ├── convert.py    # Markdown → HTML (diagrams + math)
+│   │   ├── pdf.py        # HTML → PDF via WeasyPrint
+│   │   ├── styles.py     # Base CSS + user CSS merging
+│   │   └── s3.py         # S3 upload + presigned URL
+│   └── tests/            # Phase-based test suite
+└── frontend/
+    └── src/
+        ├── App.jsx        # Main app shell + mobile nav
+        └── components/
+            ├── Editor.jsx       # CodeMirror markdown editor
+            ├── CSSEditor.jsx    # CodeMirror CSS editor
+            ├── Preview.jsx      # Live react-markdown preview
+            └── ExportButton.jsx # Export trigger + error state
 ```
 
 ---
+
+## Contributing
+
+PRs are welcome. For major changes, open an issue first to discuss what you'd like to change.
+
+---
+
+<div align="center">
+
+If MD2PDF saves you time, a ⭐ on GitHub goes a long way.
+
+**[Star the repo →](https://github.com/Shivam007kumar/markdown_to_pdf)**
+
+</div>
