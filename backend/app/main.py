@@ -63,7 +63,7 @@ async def export_pdf(request: Request, payload: ExportRequest):
         try:
             pdf_bytes = await asyncio.wait_for(
                 asyncio.to_thread(to_pdf, html_body, stylesheet=full_css), 
-                timeout=45.0
+                timeout=300.0  # Increased to 5 minutes to accommodate large files
             )
         except asyncio.TimeoutError:
             raise HTTPException(status_code=504, detail="PDF generation timed out while fetching external resources.")
