@@ -21,7 +21,8 @@ def get_s3_client():
                     aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
                     aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
                     region_name=os.getenv('AWS_REGION', 'ap-south-1'),
-                    config=Config(retries={'max_attempts': 3})
+                    endpoint_url=f"https://s3.{os.getenv('AWS_REGION', 'ap-south-1')}.amazonaws.com",
+                    config=Config(signature_version='s3v4', retries={'max_attempts': 3})
                 )
     return _s3_client
 
