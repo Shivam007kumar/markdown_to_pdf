@@ -9,6 +9,9 @@ load_dotenv()
 
 # Fix: Configure default production logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Fix: Silence extreme weasyprint/fontTools log bloat
+logging.getLogger('fontTools').setLevel(logging.WARNING)
+logging.getLogger('weasyprint').setLevel(logging.WARNING)
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
