@@ -107,6 +107,13 @@ def get_base_styles() -> str:
         break-inside: avoid;
     }
 
+    img {
+        max-width: 100%;
+        max-height: 90vh;
+        object-fit: contain;
+        height: auto;
+    }
+
     p, li {
         orphans: 3;
         widows: 3;
