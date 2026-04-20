@@ -45,7 +45,7 @@ app.add_middleware(
 
 class ExportRequest(BaseModel):
     # Fix: Added strict length validation to prevent massive payloads from choking WeasyPrint
-    markdown: str = Field(..., max_length=1_000_000)
+    markdown: str = Field(..., max_length=10_000_000)
     custom_css: str = Field("", max_length=100_000)
 
 @app.get("/health")
@@ -56,8 +56,8 @@ def health_check():
 @limiter.limit("10/minute")
 async def export_pdf(request: Request, payload: ExportRequest):
     try:
-        # 1. Convert Markdown to HTML
-        html_body = convert(payload.markdown)
+        # 1. Convert Markdown to HTML Note: we now wait for async fetching
+        html_body = await convert(payload.markdown)
         
         # 2. Build full CSS (base + custom)
         full_css = build_styles(payload.custom_css)

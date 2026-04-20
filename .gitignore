@@ -14,3 +14,6 @@ backend/.pytest_cache/
 
 # OS
 .DS_Store
+
+# Keys
+md2pdf-key.pem

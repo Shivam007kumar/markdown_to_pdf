@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Editor from './components/Editor';
 import Preview from './components/Preview';
 import CSSEditor from './components/CSSEditor';
@@ -11,6 +11,7 @@ function App() {
   const [markdown, setMarkdown] = useState('');
   const [customCss, setCustomCss] = useState('h1 {\n  color: #2c3e50;\n}');
   const [hasUserContent, setHasUserContent] = useState(false);
+  const [imageMap, setImageMap] = useState({});
   
   // Mobile states
   const [activeMobileView, setActiveMobileView] = useState('preview'); // 'preview', 'editor', 'css'
@@ -31,6 +32,14 @@ function App() {
     const timer = setTimeout(() => setDebouncedMarkdown(markdown), 300);
     return () => clearTimeout(timer);
   }, [markdown]);
+
+  const resolvedMarkdownForExport = useMemo(() => {
+    let result = markdown;
+    Object.keys(imageMap).forEach((blobUrl) => {
+      result = result.split(blobUrl).join(imageMap[blobUrl]);
+    });
+    return result;
+  }, [markdown, imageMap]);
 
   const handlePaste = async () => {
     try {
@@ -133,7 +142,7 @@ function App() {
             <Github className="w-4 h-4" />
             <span className="hidden lg:inline">Star on GitHub</span>
           </a>
-          <ExportButton markdown={markdown} customCss={customCss} />
+          <ExportButton markdown={resolvedMarkdownForExport} customCss={customCss} />
         </div>
       </header>
 
@@ -182,7 +191,11 @@ function App() {
             {activeMobileView === 'css' ? (
               <CSSEditor value={customCss} onChange={setCustomCss} />
             ) : (
-              <Editor value={markdown} onChange={(val) => { setMarkdown(val); }} />
+              <Editor 
+                value={markdown} 
+                onChange={(val) => { setMarkdown(val); }} 
+                onImageAdded={(blobUrl, base64) => setImageMap(prev => ({...prev, [blobUrl]: base64}))} 
+              />
             )}
           </div>
         </div>
