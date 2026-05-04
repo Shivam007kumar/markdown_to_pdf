@@ -49,37 +49,20 @@ async def fetch_diagram(client, diagram_type, code):
 
 async def fetch_math(client, content, is_block):
     encoded = urllib.parse.quote(content)
-    url = f"https://latex.codecogs.com/png.image?%5Cdpi%7B300%7D%5Cbg_white%5Ccolor%7Bblack%7D{encoded}"
-    
-    img_width = None
-    img_height = None
+    url = f"https://latex.codecogs.com/svg.image?%5Cbg_white%5Ccolor%7Bblack%7D{encoded}"
     
     try:
         resp = await client.get(url)
         resp.raise_for_status()
-        
-        if is_block:
-            try:
-                from PIL import Image
-                import io
-                img = Image.open(io.BytesIO(resp.content))
-                # Scale 300 DPI image to standard 96 DPI pixel layout dimensions (1/3.125)
-                scale = 96 / 300
-                img_width = max(1, int(img.width * scale))
-                img_height = max(1, int(img.height * scale))
-            except Exception:
-                pass
-                
         b64 = base64.b64encode(resp.content).decode('utf-8')
-        img_src = f"data:image/png;base64,{b64}"
+        img_src = f"data:image/svg+xml;base64,{b64}"
     except Exception:
         # Fallback to external url if fetching fails
         img_src = url
     
     # Using alt="" and a zero-width space &#8203; so copy-paste skips the formula elegantly
     if is_block:
-        size_attrs = f'width="{img_width}" height="{img_height}" ' if img_width and img_height else ''
-        return f'\n<div class="katex-display" style="text-align: center; margin: 1.5em 0;"><span style="font-size:0; color:transparent; user-select:none;">&#8203;</span><img src="{img_src}" {size_attrs}style="max-width: 100%; height: auto;" alt="" /></div>\n'
+        return f'\n<div class="katex-display" style="text-align: center; margin: 1.5em 0;"><span style="font-size:0; color:transparent; user-select:none;">&#8203;</span><img src="{img_src}" style="max-width: 100%;" alt="" /></div>\n'
     else:
         return f'<span style="font-size:0; color:transparent; user-select:none;">&#8203;</span><img src="{img_src}" style="vertical-align: middle; height: 1.25em;" alt="" class="katex" />'
 
