@@ -154,7 +154,9 @@ $$
 $$
 ```
 
-Both are rendered as high-DPI PNG images embedded directly in the PDF.
+- **Async Rendering:** All math formulas are fetched concurrently in the backend via HTTPX and Asyncio, significantly cutting down PDF generation latency.
+- **Scalable Vector Graphics (SVG):** Math is natively rendered into SVGs using LaTeX CodeCogs, allowing for perfectly crisp, layout-mapped physical sizing across both inline and block placements without pixelation.
+- **Index-Stable Processing:** Robust regex substitution using UUID placeholders prevents nested parsing conflicts between inline and block math statements.
 
 ---
 
@@ -205,6 +207,16 @@ The live demo (`md2pdf-by.shivam007.dev`) is fully deployed using a modern, low-
 ## Contributing
 
 PRs are welcome. For major changes, open an issue first to discuss what you'd like to change.
+
+---
+
+## Changelog & Recent Updates
+
+- **v1.1.0** — **The Math Polish Update**
+  - **SVG Math Architecture:** Replaced legacy high-DPI PNG rendering for math formulas with scalable SVGs. This fully resolved all pixel layout sizing bugs and CSS scaling issues natively within WeasyPrint.
+  - **Robust Regex Parsing:** Implemented sequential UUID placeholders in `app/convert.py` to fix regex overlap bugs, fully supporting nested block and inline math without HTML corruption.
+  - **Async Fetching:** Built out `asyncio.gather` logic for LaTeX formula fetching, dropping PDF generation time.
+  - **Automated Deployment Sync:** Fully synced GitHub Actions CI/CD to AWS EC2 so every GitHub push instantly mirrors to production.
 
 ---
 
