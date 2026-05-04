@@ -5,6 +5,7 @@ import urllib.parse
 import asyncio
 import httpx
 import textwrap
+import uuid
 from markdown_it import MarkdownIt
 
 # Industrial-grade regex for fenced code blocks (Mermaid/Diagrams)
@@ -70,45 +71,48 @@ async def convert(markdown_text: str) -> str:
     Convert Markdown text to HTML using markdown-it-py.
     Processes math and Mermaid asynchronously before HTML conversion.
     """
-    diagram_matches = list(DIAGRAM_RE.finditer(markdown_text))
-    math_block_matches = list(MATH_BLOCK_RE.finditer(markdown_text))
-    math_inline_matches = list(MATH_INLINE_RE.finditer(markdown_text))
+    tasks = {}
+
+    def diag_repl(m):
+        uid = f"__UUID_{uuid.uuid4().hex}__"
+        dtype = m.group(1).strip()
+        code = textwrap.dedent(m.group(2).strip())
+        tasks[uid] = ('diagram', dtype, code)
+        return uid
+
+    markdown_text = DIAGRAM_RE.sub(diag_repl, markdown_text)
+
+    def block_repl(m):
+        uid = f"__UUID_{uuid.uuid4().hex}__"
+        tasks[uid] = ('math_block', m.group(1).strip())
+        return uid
+
+    markdown_text = MATH_BLOCK_RE.sub(block_repl, markdown_text)
+
+    def inline_repl(m):
+        uid = f"__UUID_{uuid.uuid4().hex}__"
+        tasks[uid] = ('math_inline', m.group(1).strip())
+        return uid
+
+    markdown_text = MATH_INLINE_RE.sub(inline_repl, markdown_text)
 
     async with httpx.AsyncClient(timeout=15.0) as client:
-        diagram_tasks = []
-        for m in diagram_matches:
-            dtype = m.group(1).strip()
-            code = textwrap.dedent(m.group(2).strip())
-            diagram_tasks.append(fetch_diagram(client, dtype, code))
-            
-        block_tasks = []
-        for m in math_block_matches:
-            block_tasks.append(fetch_math(client, m.group(1).strip(), True))
-            
-        inline_tasks = []
-        for m in math_inline_matches:
-            inline_tasks.append(fetch_math(client, m.group(1).strip(), False))
-            
-        diagram_results = await asyncio.gather(*diagram_tasks)
-        block_results = await asyncio.gather(*block_tasks)
-        inline_results = await asyncio.gather(*inline_tasks)
-
-    # Reconstruct text starting from the end to avoid index shifting
-    replacements = []
-    
-    for i, m in enumerate(diagram_matches):
-        replacements.append((m.start(), m.end(), diagram_results[i]))
-        
-    for i, m in enumerate(math_block_matches):
-        replacements.append((m.start(), m.end(), block_results[i]))
-        
-    for i, m in enumerate(math_inline_matches):
-        replacements.append((m.start(), m.end(), inline_results[i]))
-        
-    replacements.sort(key=lambda x: x[0], reverse=True)
-    
-    for start, end, text in replacements:
-        markdown_text = markdown_text[:start] + text + markdown_text[end:]
+        # Create tasks
+        awaitables = []
+        uids = []
+        for uid, task_info in tasks.items():
+            uids.append(uid)
+            if task_info[0] == 'diagram':
+                awaitables.append(fetch_diagram(client, task_info[1], task_info[2]))
+            elif task_info[0] == 'math_block':
+                awaitables.append(fetch_math(client, task_info[1], True))
+            elif task_info[0] == 'math_inline':
+                awaitables.append(fetch_math(client, task_info[1], False))
+                
+        if awaitables:
+            results = await asyncio.gather(*awaitables)
+            for uid, html_result in zip(uids, results):
+                markdown_text = markdown_text.replace(uid, html_result)
 
     html = md.render(markdown_text)
     return html
