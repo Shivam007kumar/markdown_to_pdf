@@ -60,19 +60,21 @@ function Editor({ value, onChange, onImageAdded }) {
   });
 
   return (
-    <CodeMirror
-      value={value}
-      height="100%"
-      extensions={[markdown(), domHandlers]}
-      onChange={(val) => onChange(val)}
-      theme="light"
-      className="text-base"
-      basicSetup={{
-        lineNumbers: true,
-        foldGutter: true,
-        highlightActiveLine: true,
-      }}
-    />
+    <div className="h-full w-full bg-white flex justify-center">
+      <CodeMirror
+        value={value}
+        height="100%"
+        extensions={[markdown(), domHandlers, EditorView.lineWrapping]}
+        onChange={(val) => onChange(val)}
+        theme="light"
+        className="text-base w-full max-w-4xl px-2 sm:px-4 md:px-8 pb-12"
+        basicSetup={{
+          lineNumbers: true,
+          foldGutter: true,
+          highlightActiveLine: true,
+        }}
+      />
+    </div>
   );
 }
 

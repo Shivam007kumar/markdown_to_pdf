@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import localforage from 'localforage';
 import Editor from './components/Editor';
 import Preview from './components/Preview';
 import CSSEditor from './components/CSSEditor';
 import ExportButton from './components/ExportButton';
-import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard } from 'lucide-react';
+import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard, Trash2 } from 'lucide-react';
 
 const DEFAULT_MARKDOWN = '# Hello Markdown\n\nEdit me to see live preview!\n\n$$x^2 + y^2 = z^2$$';
 
@@ -12,11 +13,51 @@ function App() {
   const [customCss, setCustomCss] = useState('h1 {\n  color: #2c3e50;\n}');
   const [hasUserContent, setHasUserContent] = useState(false);
   const [imageMap, setImageMap] = useState({});
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Mobile states
   const [activeMobileView, setActiveMobileView] = useState('preview'); // 'preview', 'editor', 'css'
   const [showTooltip, setShowTooltip] = useState(false);
   const [hasShownTooltip, setHasShownTooltip] = useState(false);
+
+  // Load draft on mount
+  useEffect(() => {
+    localforage.getItem('md2pdf_draft').then((draft) => {
+      if (draft) {
+        if (draft.markdown !== undefined) setMarkdown(draft.markdown);
+        if (draft.customCss !== undefined) setCustomCss(draft.customCss);
+        if (draft.imageMap !== undefined) setImageMap(draft.imageMap);
+        setHasUserContent(true);
+      }
+      setIsInitialized(true);
+    });
+  }, []);
+
+  // Save to draft whenever content changes
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    // Don't auto-save if everything is completely empty and no user content yet
+    if (!hasUserContent && markdown === '' && Object.keys(imageMap).length === 0) return;
+    
+    setSaveStatus('saving');
+    
+    const draftData = {
+      markdown,
+      customCss,
+      imageMap
+    };
+    
+    const timer = setTimeout(() => {
+      localforage.setItem('md2pdf_draft', draftData).then(() => {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2500);
+      });
+    }, 800); // Debounce saving
+    
+    return () => clearTimeout(timer);
+  }, [markdown, customCss, imageMap, isInitialized, hasUserContent]);
 
   useEffect(() => {
     if (hasUserContent && !hasShownTooltip) {
@@ -67,6 +108,15 @@ function App() {
   const loadExample = () => {
     setMarkdown(DEFAULT_MARKDOWN);
     setHasUserContent(true);
+    setActiveMobileView('preview');
+  };
+
+  const handleClearDocument = async () => {
+    await localforage.removeItem('md2pdf_draft');
+    setMarkdown('');
+    setCustomCss('h1 {\n  color: #2c3e50;\n}');
+    setImageMap({});
+    setHasUserContent(false);
     setActiveMobileView('preview');
   };
 
@@ -127,10 +177,23 @@ function App() {
           <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg md:rounded-xl bg-white p-1 md:p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
             <img src="/docs.png" alt="MD2PDF Logo" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
-          <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">MD2PDF</h1>
+          <div className="flex flex-col">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent leading-none">MD2PDF</h1>
+            {saveStatus === 'saving' && <span className="text-[10px] md:text-[11px] text-slate-400 font-medium mt-0.5 animate-pulse">Saving...</span>}
+            {saveStatus === 'saved' && <span className="text-[10px] md:text-[11px] text-emerald-500 font-medium mt-0.5">All changes saved locally</span>}
+          </div>
         </div>
         
-        <div className="flex justify-end items-center gap-4">
+        <div className="flex justify-end items-center gap-2 md:gap-4">
+          <button
+            onClick={handleClearDocument}
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-2 rounded-xl hover:bg-red-50"
+            title="Clear Document"
+          >
+            <Trash2 className="w-4 h-4 md:w-4 md:h-4" />
+            <span className="hidden lg:inline">Clear</span>
+          </button>
+          
           {/* Desktop Github Link */}
           <a
             href="https://github.com/Shivam007kumar/markdown_to_pdf"

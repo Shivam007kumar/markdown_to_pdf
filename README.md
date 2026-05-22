@@ -212,6 +212,12 @@ PRs are welcome. For major changes, open an issue first to discuss what you'd li
 
 ## Changelog & Recent Updates
 
+- **v1.2.0** — **The "Never Lose Work" Update**
+  - **IndexedDB Auto-Save:** Implemented seamless, silent background auto-saving using `localforage`. Your drafts (Markdown, CSS, and images) survive tab closures, refreshes, and browser crashes.
+  - **"Google Docs" Style Indicators:** Added live "Saving..." and "Saved locally" indicators to the top header for complete peace of mind.
+  - **Responsive A4 Editor:** Configured CodeMirror to automatically wrap lines and intelligently cap the width (`max-w-4xl`) on large monitors to mimic an A4 PDF document, while remaining fluid on mobile devices.
+  - **Clear Document Workflow:** Added a handy "Clear" button to quickly purge local storage and start fresh.
+
 - **v1.1.0** — **The Math Polish Update**
   - **SVG Math Architecture:** Replaced legacy high-DPI PNG rendering for math formulas with scalable SVGs. This fully resolved all pixel layout sizing bugs and CSS scaling issues natively within WeasyPrint.
   - **Robust Regex Parsing:** Implemented sequential UUID placeholders in `app/convert.py` to fix regex overlap bugs, fully supporting nested block and inline math without HTML corruption.
