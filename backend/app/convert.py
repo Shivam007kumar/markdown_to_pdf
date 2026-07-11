@@ -14,6 +14,9 @@ DIAGRAM_RE = re.compile(
     flags=re.DOTALL | re.MULTILINE
 )
 
+# Regex to catch all remaining code blocks (fenced and inline) to mask them from math parsing
+GENERAL_CODE_RE = re.compile(r'(```.*?```|`[^`\n]+`)', flags=re.DOTALL)
+
 MATH_BLOCK_RE = re.compile(r'(?<!\\)\$\$(.*?)\$\$', flags=re.DOTALL)
 MATH_INLINE_RE = re.compile(r'(?<!\\)\$(?!\s)(.*?)(?<!\s)\$', flags=re.DOTALL)
 
@@ -83,6 +86,15 @@ async def convert(markdown_text: str) -> str:
 
     markdown_text = DIAGRAM_RE.sub(diag_repl, markdown_text)
 
+    # Mask remaining code blocks so the math regex ignores $ variables inside them
+    code_tasks = {}
+    def code_repl(m):
+        uid = f"__CODE_UUID_{uuid.uuid4().hex}__"
+        code_tasks[uid] = m.group(1)
+        return uid
+        
+    markdown_text = GENERAL_CODE_RE.sub(code_repl, markdown_text)
+
     def block_repl(m):
         uid = f"__UUID_{uuid.uuid4().hex}__"
         tasks[uid] = ('math_block', m.group(1).strip())
@@ -114,6 +126,10 @@ async def convert(markdown_text: str) -> str:
             results = await asyncio.gather(*awaitables)
             for uid, html_result in zip(uids, results):
                 markdown_text = markdown_text.replace(uid, html_result)
+
+    # Restore the masked code blocks exactly as they were
+    for uid, original_code in code_tasks.items():
+        markdown_text = markdown_text.replace(uid, original_code)
 
     html = md.render(markdown_text)
     return html

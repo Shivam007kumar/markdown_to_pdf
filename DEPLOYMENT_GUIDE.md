@@ -127,7 +127,7 @@ User=ubuntu
 Group=www-data
 WorkingDirectory=/home/ubuntu/markdown_to_pdf/backend
 Environment="PATH=/home/ubuntu/markdown_to_pdf/backend/venv/bin"
-ExecStart=/home/ubuntu/markdown_to_pdf/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 3
+ExecStart=/home/ubuntu/markdown_to_pdf/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 3 --proxy-headers --forwarded-allow-ips "*"
 
 [Install]
 WantedBy=multi-user.target
@@ -240,3 +240,65 @@ jobs:
 ```
 
 Commit this to GitHub. Boom, you're officially deployed and automated!
+
+---
+
+## Phase 8: Nightly Health Check Alert System
+
+To ensure your system is completely healthy, we have a Python script (`backend/health_check.py`) that pings the live server, generates a test PDF, and scans the system logs for silent errors. If it detects an issue, it will email you.
+
+### 1. Add Email Credentials
+SSH into your server and edit your backend `.env` file to add your Gmail address and a **Gmail App Password**:
+```bash
+ssh -i /path/to/md2pdf-key.pem ubuntu@YOUR_EC2_PUBLIC_IP
+nano /home/ubuntu/markdown_to_pdf/backend/.env
+```
+Append these two lines:
+```
+ALERT_EMAIL=your_gmail@gmail.com
+ALERT_EMAIL_PASSWORD=your_app_password
+```
+
+### 2. Create the Systemd Service
+Create the service file that runs the script:
+```bash
+sudo nano /etc/systemd/system/md2pdf-health.service
+```
+Paste the following:
+```ini
+[Unit]
+Description=MD2PDF Nightly Health Check
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/markdown_to_pdf/backend
+Environment="PATH=/home/ubuntu/markdown_to_pdf/backend/venv/bin"
+ExecStart=/home/ubuntu/markdown_to_pdf/backend/venv/bin/python3 health_check.py
+```
+
+### 3. Create the Systemd Timer
+Create a timer to trigger the service every midnight:
+```bash
+sudo nano /etc/systemd/system/md2pdf-health.timer
+```
+Paste the following:
+```ini
+[Unit]
+Description=Run MD2PDF Health Check Nightly
+
+[Timer]
+OnCalendar=*-*-* 00:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+### 4. Enable the Timer
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable md2pdf-health.timer
+sudo systemctl start md2pdf-health.timer
+```
+You can manually trigger the alert system at any time by running: `sudo systemctl start md2pdf-health.service`

@@ -210,7 +210,23 @@ PRs are welcome. For major changes, open an issue first to discuss what you'd li
 
 ---
 
+## Future Scope
+
+As MD2PDF grows, here are the planned features for the next major iterations:
+
+1. **User Authentication & Cloud Sync:** Introduce lightweight user accounts (via NextAuth or Supabase) to permanently save documents in the cloud without relying on local browser storage.
+2. **Template Library:** Provide a selection of pre-built CSS templates (e.g., Academic Paper, Minimal Resume, Corporate Report) that users can apply with a single click.
+3. **Collaboration:** Add real-time multiplayer editing using WebSockets or Yjs, allowing multiple users to edit the same Markdown document simultaneously.
+4. **Custom Headers & Footers:** Allow users to inject dynamic page numbers, dates, and custom text into the PDF margins using WeasyPrint `@page` rules.
+
+---
+
 ## Changelog & Recent Updates
+
+- **v1.3.0** — **The Bulletproof Server Update**
+  - **Math Edge-Case Protection:** Implemented a pre-processor masking strategy for code blocks. Shell scripts and code variables (like `$HADOOP_HOME`) are now perfectly shielded from the LaTeX regex parser, entirely eliminating the 40-second timeout bug.
+  - **Nightly Health Check System:** Built a zero-maintenance Python cron script that pings the live server, executes an end-to-end PDF generation test, and scans `journalctl` for hidden errors, sending email alerts via Gmail SMTP if anything breaks.
+  - **Proxy Rate-Limit Fix:** Configured Uvicorn to parse `X-Forwarded-For` headers (`--proxy-headers`), fixing a bug where SlowAPI globally rate-limited the entire application due to Cloudflare/Caddy IP masking.
 
 - **v1.2.0** — **The "Never Lose Work" Update**
   - **IndexedDB Auto-Save:** Implemented seamless, silent background auto-saving using `localforage`. Your drafts (Markdown, CSS, and images) survive tab closures, refreshes, and browser crashes.

@@ -1,0 +1,249 @@
+Here is the cleaned-up and properly formatted version of your text. I have removed the search engine UI clutter, redundant snippets, and "Use code with caution" warnings to create a clear, step-by-step Markdown guide.
+
+***
+
+# How to Install Apache Hadoop on Ubuntu
+
+To install Apache Hadoop on Ubuntu, you must install Java, configure passwordless SSH, download Hadoop, and update your configuration files. This comprehensive step-by-step guide will help you install and configure a Single-Node Hadoop Cluster (Pseudo-Distributed Mode).
+
+## Step 1: Install Java (Prerequisite)
+Hadoop is built on Java, and it requires OpenJDK 8 or 11. 
+
+Update your package manager:
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+Install OpenJDK 11:
+```bash
+sudo apt install openjdk-11-jdk -y
+```
+
+Verify your Java installation:
+```bash
+java -version
+```
+
+## Step 2: Create a Dedicated Hadoop User
+Creating an isolated user prevents Hadoop processes from interfering with other system components. 
+
+Create a new user named `hadoop`:
+```bash
+sudo adduser hadoop
+```
+
+Add the user to the `sudo` group so it can execute administrative tasks:
+```bash
+sudo usermod -aG sudo hadoop
+```
+
+Switch to the newly created `hadoop` user:
+```bash
+su - hadoop
+```
+
+## Step 3: Configure Passwordless SSH
+Hadoop uses SSH keys to securely manage its nodes and services on localhost without prompting for a password. 
+
+Install the OpenSSH server and client packages:
+```bash
+sudo apt install openssh-server openssh-client -y
+```
+
+Generate an SSH key pair (press Enter to skip prompts for passphrases):
+```bash
+ssh-keygen -t rsa -P "" -f ~/.ssh/id_rsa
+```
+
+Authorize the generated key:
+```bash
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+chmod 0600 ~/.ssh/authorized_keys
+```
+
+Test the connection to localhost:
+```bash
+ssh localhost
+```
+*(Type `yes` when prompted to verify authenticity, then type `exit` to close the nested shell session.)*
+
+## Step 4: Download and Extract Apache Hadoop
+Fetch the latest stable Hadoop 3 binary from the official Apache Download Mirrors:
+```bash
+wget https://downloads.apache.org/hadoop/common/hadoop-3.3.6/hadoop-3.3.6.tar.gz
+```
+
+Extract the downloaded `.tar.gz` archive:
+```bash
+tar -xvzf hadoop-3.3.6.tar.gz
+```
+
+Move the extracted folder to `/usr/local/hadoop` for universal system placement:
+```bash
+sudo mv hadoop-3.3.6 /usr/local/hadoop
+```
+
+Change the directory ownership to your `hadoop` user:
+```bash
+sudo chown -R hadoop:hadoop /usr/local/hadoop
+```
+
+## Step 5: Configure Environment Variables
+Open the `.bashrc` file in your home directory:
+```bash
+nano ~/.bashrc
+```
+
+Append the following paths to the end of the file:
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+export HADOOP_HOME=/usr/local/hadoop
+export HADOOP_INSTALL=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
+export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
+```
+
+Save and close (Ctrl+O, Enter, Ctrl+X), then reload the profile:
+```bash
+source ~/.bashrc
+```
+
+## Step 6: Configure Hadoop Settings
+You need to specify explicit environments inside Hadoop's local system files located in `/usr/local/hadoop/etc/hadoop/`. 
+
+### 1. Define Java Path in `hadoop-env.sh`
+Open `hadoop-env.sh`: 
+```bash
+nano /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+```
+Find the line containing `export JAVA_HOME` and update it: 
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+```
+
+### 2. Configure `core-site.xml`
+Open `core-site.xml`: 
+```bash
+nano /usr/local/hadoop/etc/hadoop/core-site.xml
+```
+Add the following properties inside the `<configuration>` tags to point Hadoop to localhost: 
+```xml
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://localhost:9000</value>
+    </property>
+</configuration>
+```
+
+### 3. Configure `hdfs-site.xml`
+Open `hdfs-site.xml`: 
+```bash
+nano /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+```
+Add the configuration to define storage directory paths and standard data replication: 
+```xml
+<configuration>
+    <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+    </property>
+    <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///usr/local/hadoop/hadoop_data/hdfs/namenode</value>
+    </property>
+    <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///usr/local/hadoop/hadoop_data/hdfs/datanode</value>
+    </property>
+</configuration>
+```
+
+### 4. Configure `mapred-site.xml`
+Open `mapred-site.xml`: 
+```bash
+nano /usr/local/hadoop/etc/hadoop/mapred-site.xml
+```
+Add these configurations to route MapReduce applications to use YARN: 
+```xml
+<configuration>
+    <property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+    </property>
+    <property>
+        <name>mapreduce.application.classpath</name>
+        <value>$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/*:$HADOOP_MAPRED_HOME/share/hadoop/mapreduce/lib/*</value>
+    </property>
+</configuration>
+```
+
+### 5. Configure `yarn-site.xml`
+Open `yarn-site.xml`: 
+```bash
+nano /usr/local/hadoop/etc/hadoop/yarn-site.xml
+```
+Add the following configurations:
+```xml
+<configuration>
+    <property>
+        <name>yarn.nodemanager.aux-services</name>
+        <value>mapreduce_shuffle</value>
+    </property>
+    <property>
+        <name>yarn.nodemanager.env-whitelist</name>
+        <value>JAVA_HOME,HADOOP_COMMON_HOME,HADOOP_HDFS_HOME,HADOOP_CONF_DIR,CLASSPATH_PREPEND_DISTCACHE,HADOOP_YARN_HOME,HADOOP_MAPRED_HOME</value>
+    </property>
+</configuration>
+```
+
+## Step 7: Initialize and Run Hadoop
+Create the directories defined in your `hdfs-site.xml` mapping:
+```bash
+mkdir -p /usr/local/hadoop/hadoop_data/hdfs/namenode
+mkdir -p /usr/local/hadoop/hadoop_data/hdfs/datanode
+```
+
+Format the NameNode *(Note: this acts as a fresh initialization of the file system and should only be run once)*:
+```bash
+hdfs namenode -format
+```
+
+Start the Hadoop Distributed File System (HDFS):
+```bash
+start-dfs.sh
+```
+
+Start the YARN node management framework:
+```bash
+start-yarn.sh
+```
+
+Check if all the processes (NameNode, DataNode, ResourceManager, NodeManager) launched successfully:
+```bash
+jps
+```
+
+## Step 8: Access the Hadoop Web User Interface
+Open your favorite web browser and use the local addresses below to view stats:
+*   **HDFS NameNode UI** (Check structural file storage): [http://localhost:9870](http://localhost:9870)
+*   **YARN Resource Manager UI** (Track system jobs and executions): [http://localhost:8088](http://localhost:8088)
+
+### Shutting Down Hadoop
+To close down the cluster when you finish working, you can safely shut down the systems using:
+```bash
+stop-dfs.sh && stop-yarn.sh
+```
+
+***
+
+**Troubleshooting Checklist:**
+If you encounter any issues during startup, check the following:
+*   What error message appears on your terminal screen?
+*   Which specific Ubuntu version are you targeting?
+*   Did any particular service fail to list under the `jps` status command?
