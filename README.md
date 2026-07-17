@@ -225,7 +225,7 @@ As MD2PDF grows, here are the planned features for the next major iterations:
 
 - **v1.3.0** — **The Bulletproof Server Update**
   - **Math Edge-Case Protection:** Implemented a pre-processor masking strategy for code blocks. Shell scripts and code variables (like `$HADOOP_HOME`) are now perfectly shielded from the LaTeX regex parser, entirely eliminating the 40-second timeout bug.
-  - **Nightly Health Check System:** Built a zero-maintenance Python cron script that pings the live server, executes an end-to-end PDF generation test, and scans `journalctl` for hidden errors, sending email alerts via Gmail SMTP if anything breaks.
+  - **Comprehensive Health Check System:** Built a zero-maintenance Python cron script that pings the live server daily. On Sundays at midnight, it goes a step further: it dynamically generates a rich Markdown payload (with LaTeX and Mermaid diagrams), hits the E2E `/export` API, downloads the resulting PDF, and emails it to the admin. This conclusively proves the entire pipeline (Parser -> CodeCogs -> Kroki -> WeasyPrint -> S3 -> Email) is 100% operational.
   - **Proxy Rate-Limit Fix:** Configured Uvicorn to parse `X-Forwarded-For` headers (`--proxy-headers`), fixing a bug where SlowAPI globally rate-limited the entire application due to Cloudflare/Caddy IP masking.
 
 - **v1.2.0** — **The "Never Lose Work" Update**

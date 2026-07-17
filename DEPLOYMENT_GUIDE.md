@@ -273,7 +273,7 @@ Description=MD2PDF Nightly Health Check
 Type=oneshot
 User=ubuntu
 WorkingDirectory=/home/ubuntu/markdown_to_pdf/backend
-Environment="PATH=/home/ubuntu/markdown_to_pdf/backend/venv/bin"
+Environment="PATH=/home/ubuntu/markdown_to_pdf/backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 ExecStart=/home/ubuntu/markdown_to_pdf/backend/venv/bin/python3 health_check.py
 ```
 
@@ -288,7 +288,7 @@ Paste the following:
 Description=Run MD2PDF Health Check Nightly
 
 [Timer]
-OnCalendar=*-*-* 00:00:00
+OnCalendar=*-*-* 00:00:00 Asia/Kolkata
 Persistent=true
 
 [Install]
@@ -302,3 +302,49 @@ sudo systemctl enable md2pdf-health.timer
 sudo systemctl start md2pdf-health.timer
 ```
 You can manually trigger the alert system at any time by running: `sudo systemctl start md2pdf-health.service`
+
+---
+
+## Phase 9: Weekly Health Report
+
+We also have a weekly summary timer that runs every Sunday at Midnight IST. This script goes beyond a basic ping: it dynamically constructs a rich Markdown document containing LaTeX math and Mermaid diagrams, posts it to the live `/export` endpoint, downloads the generated PDF, and attaches it directly to the email alert. This proves the entire application pipeline (and all APIs) are 100% operational.
+
+### 1. Create the Weekly Service
+```bash
+sudo nano /etc/systemd/system/md2pdf-weekly.service
+```
+Paste the following:
+```ini
+[Unit]
+Description=MD2PDF Weekly Health Check
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/markdown_to_pdf/backend
+Environment="PATH=/home/ubuntu/markdown_to_pdf/backend/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+ExecStart=/home/ubuntu/markdown_to_pdf/backend/venv/bin/python3 health_check.py --weekly
+```
+
+### 2. Create the Weekly Timer
+```bash
+sudo nano /etc/systemd/system/md2pdf-weekly.timer
+```
+Paste the following:
+```ini
+[Unit]
+Description=Run MD2PDF Weekly Health Check
+
+[Timer]
+OnCalendar=Sun *-*-* 00:00:00 Asia/Kolkata
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+### 3. Enable the Weekly Timer
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now md2pdf-weekly.timer
+```
