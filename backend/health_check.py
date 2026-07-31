@@ -97,6 +97,8 @@ def run_health_check(is_weekly=False):
             line_lower = line.lower()
             if 'error' in line_lower or 'exception' in line_lower or 'traceback' in line_lower:
                 # Filter out false positives
+                if "httpx" in line_lower and "info" in line_lower:
+                    continue
                 if "weasyprint" in line_lower and "ignored" in line_lower:
                     continue
                 if "no entries" in line_lower:

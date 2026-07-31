@@ -18,7 +18,7 @@ DIAGRAM_RE = re.compile(
 GENERAL_CODE_RE = re.compile(r'(```.*?```|`[^`\n]+`)', flags=re.DOTALL)
 
 MATH_BLOCK_RE = re.compile(r'(?<!\\)\$\$(.*?)\$\$', flags=re.DOTALL)
-MATH_INLINE_RE = re.compile(r'(?<!\\)\$(?!\s)(.*?)(?<!\s)\$', flags=re.DOTALL)
+MATH_INLINE_RE = re.compile(r'(?<!\\)\$(?!\s)(.*?)(?<!\s)\$')
 
 # Initialize the MarkdownIt parser
 md = (
