@@ -38,7 +38,7 @@ async def fetch_diagram(client, diagram_type, code):
         b64 = base64.b64encode(resp.content).decode('utf-8')
         return f'\n<div class="diagram-container" style="text-align: center; margin: 1.5em 0;"><img src="data:image/png;base64,{b64}" class="diagram-{diagram_type}" style="max-width: 100%; object-fit: contain;"/></div>\n'
     except Exception as e:
-        error_msg = str(e)
+        error_msg = f"{type(e).__name__}: {str(e)}"
         safe_error = error_msg.replace('<', '&lt;').replace('>', '&gt;')[:500]
         return (
             f'\n<div style="background:#fee2e2;padding:0.8em 1em;border-radius:6px;'
