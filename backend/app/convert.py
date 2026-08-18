@@ -17,8 +17,11 @@ DIAGRAM_RE = re.compile(
 # Regex to catch all remaining code blocks (fenced and inline) to mask them from math parsing
 GENERAL_CODE_RE = re.compile(r'(```.*?```|`[^`\n]+`)', flags=re.DOTALL)
 
-MATH_BLOCK_RE = re.compile(r'(?<!\\)\$\$(.*?)\$\$', flags=re.DOTALL)
-MATH_INLINE_RE = re.compile(r'(?<!\\)\$(?!\s)(.*?)(?<!\s)\$')
+MATH_BLOCK_DOLLAR_RE = re.compile(r'(?<!\\)\$\$(.*?)\$\$', flags=re.DOTALL)
+MATH_BLOCK_BRACKET_RE = re.compile(r'\\\[(.*?)\\\]', flags=re.DOTALL)
+
+MATH_INLINE_DOLLAR_RE = re.compile(r'(?<!\\)\$(?!\s)(.*?)(?<!\s)\$')
+MATH_INLINE_PAREN_RE = re.compile(r'\\\((.*?)\\\)')
 
 # Initialize the MarkdownIt parser
 md = (
@@ -100,14 +103,16 @@ async def convert(markdown_text: str) -> str:
         tasks[uid] = ('math_block', m.group(1).strip())
         return uid
 
-    markdown_text = MATH_BLOCK_RE.sub(block_repl, markdown_text)
+    markdown_text = MATH_BLOCK_DOLLAR_RE.sub(block_repl, markdown_text)
+    markdown_text = MATH_BLOCK_BRACKET_RE.sub(block_repl, markdown_text)
 
     def inline_repl(m):
         uid = f"__UUID_{uuid.uuid4().hex}__"
         tasks[uid] = ('math_inline', m.group(1).strip())
         return uid
 
-    markdown_text = MATH_INLINE_RE.sub(inline_repl, markdown_text)
+    markdown_text = MATH_INLINE_DOLLAR_RE.sub(inline_repl, markdown_text)
+    markdown_text = MATH_INLINE_PAREN_RE.sub(inline_repl, markdown_text)
 
     async with httpx.AsyncClient(timeout=15.0) as client:
         # Create tasks
