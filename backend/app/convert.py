@@ -18,10 +18,10 @@ DIAGRAM_RE = re.compile(
 GENERAL_CODE_RE = re.compile(r'(```.*?```|`[^`\n]+`)', flags=re.DOTALL)
 
 MATH_BLOCK_DOLLAR_RE = re.compile(r'(?<!\\)\$\$(.*?)\$\$', flags=re.DOTALL)
-MATH_BLOCK_BRACKET_RE = re.compile(r'\\\[(.*?)\\\]', flags=re.DOTALL)
+MATH_BLOCK_BRACKET_RE = re.compile(r'\\\\?\[(.*?)\\\\?\]', flags=re.DOTALL)
 
 MATH_INLINE_DOLLAR_RE = re.compile(r'(?<!\\)\$(?!\s)(.*?)(?<!\s)\$')
-MATH_INLINE_PAREN_RE = re.compile(r'\\\((.*?)\\\)')
+MATH_INLINE_PAREN_RE = re.compile(r'\\\\?\((.*?)\\\\?\)')
 
 # Initialize the MarkdownIt parser
 md = (

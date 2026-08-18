@@ -14,6 +14,16 @@ function Preview({ markdown, customCss }) {
     return <style dangerouslySetInnerHTML={{ __html: sanitizedCss }} />;
   }, [customCss]);
 
+  // Normalize LaTeX math delimiters to standard Markdown $ and $$ delimiters so remark-math can parse them
+  const processedMarkdown = useMemo(() => {
+    let md = markdown || '';
+    // Replace block math \[ \] or \\[ \\] with $$
+    md = md.replace(/\\\\?\[([\s\S]*?)\\\\?\]/g, '$$$$$1$$$$');
+    // Replace inline math \( \) or \\( \\) with $
+    md = md.replace(/\\\\?\(([\s\S]*?)\\\\?\)/g, '$$$1$$');
+    return md;
+  }, [markdown]);
+
   return (
     <div className="p-10 max-w-4xl mx-auto shadow-sm bg-white min-h-[120%] mb-10 preview-container">
       {styleElement}
@@ -50,7 +60,7 @@ function Preview({ markdown, customCss }) {
           }
         }}
       >
-        {markdown}
+        {processedMarkdown}
       </ReactMarkdown>
     </div>
   );
