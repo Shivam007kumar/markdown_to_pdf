@@ -57,12 +57,17 @@ def get_base_styles() -> str:
     table {
         border-collapse: collapse;
         width: 100%;
+        max-width: 100%;
+        table-layout: fixed;
         margin: 1.5em 0;
     }
 
     table th, table td {
         border: 1px solid #dfe2e5;
         padding: 6px 13px;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        word-break: break-word;
     }
 
     table tr:nth-child(2n) {
