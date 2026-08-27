@@ -107,9 +107,24 @@ def get_base_styles() -> str:
     }
 
     /* Print Controls */
-    p, blockquote, pre, table, .katex-display, ul, ol, img {
+    /* NOTE: table intentionally excluded — tall tables must be allowed to split across pages */
+    p, blockquote, pre, .katex-display, ul, ol, img {
         page-break-inside: avoid;
         break-inside: avoid;
+    }
+
+    /* Landscape page for wide tables (>5 columns) */
+    @page landscape {
+        size: A4 landscape;
+        margin: 15mm;
+    }
+
+    .landscape-table {
+        page: landscape;
+    }
+
+    .landscape-table table {
+        font-size: 8.5pt;
     }
 
     img {

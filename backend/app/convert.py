@@ -6,6 +6,7 @@ import asyncio
 import httpx
 import textwrap
 import uuid
+from html.parser import HTMLParser
 from markdown_it import MarkdownIt
 
 # Industrial-grade regex for fenced code blocks (Mermaid/Diagrams)
@@ -137,4 +138,103 @@ async def convert(markdown_text: str) -> str:
         markdown_text = markdown_text.replace(uid, original_code)
 
     html = md.render(markdown_text)
+
+    # Post-process: wrap wide tables (>5 columns) in a landscape div
+    html = wrap_wide_tables(html)
+
     return html
+
+
+class _TableColumnCounter(HTMLParser):
+    """Lightweight SAX-style parser that counts max columns in each <table>."""
+    def __init__(self):
+        super().__init__()
+        self.in_table = False
+        self.in_row = False
+        self.current_row_cols = 0
+        self.max_cols = 0
+        self.tables = []  # list of max_cols per table
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'table':
+            self.in_table = True
+            self.max_cols = 0
+        elif tag == 'tr' and self.in_table:
+            self.in_row = True
+            self.current_row_cols = 0
+        elif tag in ('th', 'td') and self.in_row:
+            # Respect colspan attribute
+            span = 1
+            for k, v in attrs:
+                if k == 'colspan':
+                    try:
+                        span = int(v)
+                    except ValueError:
+                        pass
+            self.current_row_cols += span
+
+    def handle_endtag(self, tag):
+        if tag == 'tr' and self.in_row:
+            self.in_row = False
+            self.max_cols = max(self.max_cols, self.current_row_cols)
+        elif tag == 'table':
+            self.in_table = False
+            self.tables.append(self.max_cols)
+
+
+WIDE_TABLE_THRESHOLD = 5  # columns > this value triggers landscape
+
+def wrap_wide_tables(html: str) -> str:
+    """
+    Scan all <table> elements in html. Any table whose max column count exceeds
+    WIDE_TABLE_THRESHOLD gets wrapped in <div class="landscape-table">.</div>.
+    Uses only stdlib html.parser — no extra dependencies.
+    """
+    counter = _TableColumnCounter()
+    counter.feed(html)
+
+    if not counter.tables:
+        return html
+
+    # Walk through the HTML and wrap wide tables
+    # We iterate over each <table>...</table> block one by one.
+    result = []
+    table_index = 0
+    remaining = html
+
+    while True:
+        start = remaining.find('<table')
+        if start == -1:
+            result.append(remaining)
+            break
+
+        # Append everything before this table
+        result.append(remaining[:start])
+
+        # Find the matching </table> (handle nesting just in case)
+        depth = 0
+        pos = start
+        while pos < len(remaining):
+            if remaining[pos:].lower().startswith('<table'):
+                depth += 1
+                pos += 6
+            elif remaining[pos:].lower().startswith('</table>'):
+                depth -= 1
+                pos += 8
+                if depth == 0:
+                    break
+            else:
+                pos += 1
+
+        table_html = remaining[start:pos]
+        remaining = remaining[pos:]
+
+        # Decide whether to wrap
+        if table_index < len(counter.tables) and counter.tables[table_index] > WIDE_TABLE_THRESHOLD:
+            result.append(f'<div class="landscape-table">{table_html}</div>')
+        else:
+            result.append(table_html)
+
+        table_index += 1
+
+    return ''.join(result)
