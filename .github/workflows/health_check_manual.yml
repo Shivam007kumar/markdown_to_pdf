@@ -1,0 +1,19 @@
+name: Manual Health Check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-health-check:
+    runs-on: ubuntu-latest
+    steps:
+    - name: SSH into EC2 and run health check
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ubuntu
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /home/ubuntu/markdown_to_pdf/backend
+          source venv/bin/activate
+          python3 health_check.py --weekly
