@@ -223,6 +223,13 @@ As MD2PDF grows, here are the planned features for the next major iterations:
 
 ## Changelog & Recent Updates
 
+- **v1.4.0** — **The Formatting & Reliability Update**
+  - **Dynamic Landscape Tables:** Handled WeasyPrint's table-overflow bug by building a custom Python HTML parser that scans rendered HTML and intelligently wraps massively wide tables (>5 columns) in an `@page landscape` print directive, preventing data clipping.
+  - **Universal Math Delimiters:** Expanded the LaTeX parsing engine to recognize and correctly process standard LaTeX brackets (`\(` and `\[`) alongside the traditional Markdown `$` indicators across both the live preview and backend PDF engine.
+  - **Emoji & Extended Unicode Support:** Injected `Noto Color Emoji` and `Noto Sans` into the global CSS fallback stack to permanently banish "tofu" empty-rectangle characters from rendered PDFs.
+  - **SSRF Allowlist Expansion:** Upgraded the security manager to safely permit embedded external images from common trusted CDNs (like OpenAI, GitHub, AWS S3, and Imgur) without triggering false-positive alerts in the nightly health check.
+  - **Mermaid.ink Migration:** Re-routed all Mermaid diagram traffic away from `kroki.io` (due to heavy timeout issues) to the official `mermaid.ink` API for instant rendering, while retaining Kroki for PlantUML and D2.
+
 - **v1.3.0** — **The Bulletproof Server Update**
   - **Math Edge-Case Protection:** Implemented a pre-processor masking strategy for code blocks. Shell scripts and code variables (like `$HADOOP_HOME`) are now perfectly shielded from the LaTeX regex parser, entirely eliminating the 40-second timeout bug.
   - **Comprehensive Health Check System:** Built a zero-maintenance Python cron script that pings the live server daily. On Sundays at midnight, it goes a step further: it dynamically generates a rich Markdown payload (with LaTeX and Mermaid diagrams), hits the E2E `/export` API, downloads the resulting PDF, and emails it to the admin. This conclusively proves the entire pipeline (Parser -> CodeCogs -> Kroki -> WeasyPrint -> S3 -> Email) is 100% operational.
