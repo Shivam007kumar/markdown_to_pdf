@@ -3,7 +3,7 @@ def get_base_styles() -> str:
     Returns the baseline apitemplate-like CSS.
     """
     return """
-    @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&family=Fira+Code&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&family=Fira+Code&family=Noto+Color+Emoji&family=Noto+Sans:wght@400;700&display=swap');
 
     @page {
         size: A4;
@@ -11,7 +11,7 @@ def get_base_styles() -> str:
     }
 
     body {
-        font-family: 'Barlow', sans-serif;
+        font-family: 'Barlow', 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
         font-size: 11pt;
         line-height: 1.6;
         color: #333;
@@ -20,7 +20,7 @@ def get_base_styles() -> str:
     }
 
     h1, h2, h3, h4, h5, h6 {
-        font-family: 'Barlow', sans-serif;
+        font-family: 'Barlow', 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
         color: #2c3e50;
         margin-top: 1.5em;
     }
@@ -28,7 +28,7 @@ def get_base_styles() -> str:
     h1 { border-bottom: 2px solid #eee; padding-bottom: 0.3em; }
 
     code, pre {
-        font-family: 'Fira Code', monospace;
+        font-family: 'Fira Code', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', monospace;
         background: #2d2d2d;
         color: #f8f8f2;
         border-radius: 4px;

@@ -22,7 +22,12 @@ import logging
 
 def safe_url_fetcher(url, timeout=10, **kwargs):
     parsed = urlparse(url)
-    allowlist = ['kroki.io', 'mermaid.ink', 'latex.codecogs.com', 'fonts.googleapis.com', 'fonts.gstatic.com']
+    allowlist = [
+        'kroki.io', 'mermaid.ink', 'latex.codecogs.com', 
+        'fonts.googleapis.com', 'fonts.gstatic.com',
+        'images.openai.com', 'avatars.githubusercontent.com', 'raw.githubusercontent.com',
+        'i.imgur.com', 's3.amazonaws.com'
+    ]
     
     # Fix: Prevent absolute file:// protocol SSRF vulnerabilities reading /etc/passwd
     if parsed.scheme not in ['http', 'https', 'data']:

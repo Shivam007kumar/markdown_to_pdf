@@ -38,15 +38,21 @@ function Preview({ markdown, customCss }) {
             
             const supportedDiagrams = ['mermaid', 'plantuml', 'd2', 'excalidraw', 'graphviz', 'structurizr'];
             if (match && supportedDiagrams.includes(language)) {
-              // Handle supported diagrams by rendering them via Kroki.io
+              // Handle supported diagrams by rendering them via Kroki.io or Mermaid.ink
               const code = String(children).trim();
               try {
-                const data = new TextEncoder().encode(code);
-                const compressed = pako.deflate(data, { level: 9 });
-                // Fix: Use Uint8Array + reduce for exponentially faster base64 string construction on large inputs
-                const binaryString = new Uint8Array(compressed).reduce((acc, byte) => acc + String.fromCharCode(byte), '');
-                const encoded = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-                return <img src={`https://kroki.io/${language}/svg/${encoded}`} alt={`${language} diagram`} className="mx-auto" />;
+                if (language === 'mermaid') {
+                  const data = JSON.stringify({ code, mermaid: { theme: 'default' } });
+                  // mermaid.ink requires url-safe base64 without padding
+                  const encoded = btoa(data).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                  return <img src={`https://mermaid.ink/img/${encoded}`} alt="mermaid diagram" className="mx-auto" />;
+                } else {
+                  const data = new TextEncoder().encode(code);
+                  const compressed = pako.deflate(data, { level: 9 });
+                  const binaryString = new Uint8Array(compressed).reduce((acc, byte) => acc + String.fromCharCode(byte), '');
+                  const encoded = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                  return <img src={`https://kroki.io/${language}/svg/${encoded}`} alt={`${language} diagram`} className="mx-auto" />;
+                }
               } catch (e) {
                 return <code>{code}</code>;
               }

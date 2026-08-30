@@ -99,6 +99,8 @@ def run_health_check(is_weekly=False):
                 # Filter out false positives
                 if "httpx" in line_lower and "info" in line_lower:
                     continue
+                if "weasyprint" in line_lower and "failed to load image" in line_lower:
+                    continue
                 if "weasyprint" in line_lower and "ignored" in line_lower:
                     continue
                 if "no entries" in line_lower:

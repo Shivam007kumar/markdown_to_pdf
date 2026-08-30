@@ -31,13 +31,22 @@ md = (
 )
 
 async def fetch_diagram(client, diagram_type, code):
-    url = f'https://kroki.io/{diagram_type}/png'
     try:
-        resp = await client.post(
-            url, 
-            content=code.encode('utf-8'), 
-            headers={'Content-Type': 'text/plain', 'User-Agent': 'Mozilla/5.0'}
-        )
+        if diagram_type == 'mermaid':
+            import json
+            data = {'code': code, 'mermaid': {'theme': 'default'}}
+            # Use url-safe base64 for mermaid.ink to prevent character issues
+            b64_payload = base64.urlsafe_b64encode(json.dumps(data).encode('utf-8')).decode('utf-8')
+            url = f'https://mermaid.ink/img/{b64_payload}'
+            resp = await client.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+        else:
+            url = f'https://kroki.io/{diagram_type}/png'
+            resp = await client.post(
+                url, 
+                content=code.encode('utf-8'), 
+                headers={'Content-Type': 'text/plain', 'User-Agent': 'Mozilla/5.0'}
+            )
+            
         resp.raise_for_status()
         b64 = base64.b64encode(resp.content).decode('utf-8')
         return f'\n<div class="diagram-container" style="text-align: center; margin: 1.5em 0;"><img src="data:image/png;base64,{b64}" class="diagram-{diagram_type}" style="max-width: 100%; object-fit: contain;"/></div>\n'
