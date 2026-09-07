@@ -103,6 +103,8 @@ def run_health_check(is_weekly=False):
                     continue
                 if "weasyprint" in line_lower and "ignored" in line_lower:
                     continue
+                if "weasyprint" in line_lower and "no anchor" in line_lower:
+                    continue
                 if "no entries" in line_lower:
                     continue
                 log_errors.append(line)
