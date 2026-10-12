@@ -63,43 +63,44 @@ async def fetch_diagram(client, diagram_type, code):
             f'</div>\n'
         )
 
-async def fetch_math(client, content, is_block):
-    encoded = urllib.parse.quote(content)
-    url = f"https://latex.codecogs.com/svg.image?%5Cbg_white%5Ccolor%7Bblack%7D{encoded}"
-    
+def render_math_to_mathml(content: str, is_block: bool) -> str:
+    """
+    Renders a LaTeX expression to MathML using pure-Python latex2mathml.
+    Falls back gracefully if the formula is malformed.
+    """
     try:
-        resp = await client.get(url)
-        resp.raise_for_status()
-        b64 = base64.b64encode(resp.content).decode('utf-8')
-        img_src = f"data:image/svg+xml;base64,{b64}"
+        import latex2mathml.converter
+        display = "block" if is_block else "inline"
+        mathml = latex2mathml.converter.convert(content, display=display)
+        if is_block:
+            return f'\n<div class="math-display">{mathml}</div>\n'
+        return mathml
     except Exception:
-        # Fallback to external url if fetching fails
-        img_src = url
-    
-    # Using alt="" and a zero-width space &#8203; so copy-paste skips the formula elegantly
-    if is_block:
-        return f'\n<div class="katex-display" style="text-align: center; margin: 1.5em 0;"><span style="font-size:0; color:transparent; user-select:none;">&#8203;</span><img src="{img_src}" style="max-width: 100%;" alt="" /></div>\n'
-    else:
-        return f'<span style="font-size:0; color:transparent; user-select:none;">&#8203;</span><img src="{img_src}" style="vertical-align: middle; height: 1.25em;" alt="" class="katex" />'
+        # Fallback to code format if LaTeX syntax is invalid
+        escaped = content.replace("<", "&lt;").replace(">", "&gt;")
+        if is_block:
+            return f'\n<pre class="math-error"><code>{escaped}</code></pre>\n'
+        return f'<code class="math-error">{escaped}</code>'
 
 
 async def convert(markdown_text: str) -> str:
     """
     Convert Markdown text to HTML using markdown-it-py.
-    Processes math and Mermaid asynchronously before HTML conversion.
+    Processes Mermaid diagrams asynchronously, and converts LaTeX to MathML
+    locally without external network requests.
     """
-    tasks = {}
+    diagram_tasks = {}
 
     def diag_repl(m):
-        uid = f"__UUID_{uuid.uuid4().hex}__"
+        uid = f"__DIAG_UUID_{uuid.uuid4().hex}__"
         dtype = m.group(1).strip()
         code = textwrap.dedent(m.group(2).strip())
-        tasks[uid] = ('diagram', dtype, code)
+        diagram_tasks[uid] = (dtype, code)
         return uid
 
     markdown_text = DIAGRAM_RE.sub(diag_repl, markdown_text)
 
-    # Mask remaining code blocks so the math regex ignores $ variables inside them
+    # Mask remaining code blocks so the math regex ignores $ and math delimiters inside them
     code_tasks = {}
     def code_repl(m):
         uid = f"__CODE_UUID_{uuid.uuid4().hex}__"
@@ -108,36 +109,34 @@ async def convert(markdown_text: str) -> str:
         
     markdown_text = GENERAL_CODE_RE.sub(code_repl, markdown_text)
 
+    # Collect math expressions and replace with clean alphanumeric placeholders
+    # so markdown-it-py handles inline formatting (like **$math$**) without breaking HTML
+    math_placeholders = {}
+
     def block_repl(m):
-        uid = f"__UUID_{uuid.uuid4().hex}__"
-        tasks[uid] = ('math_block', m.group(1).strip())
+        uid = f"MATHBLOCKUUID{uuid.uuid4().hex}"
+        math_placeholders[uid] = render_math_to_mathml(m.group(1).strip(), is_block=True)
         return uid
 
     markdown_text = MATH_BLOCK_DOLLAR_RE.sub(block_repl, markdown_text)
     markdown_text = MATH_BLOCK_BRACKET_RE.sub(block_repl, markdown_text)
 
     def inline_repl(m):
-        uid = f"__UUID_{uuid.uuid4().hex}__"
-        tasks[uid] = ('math_inline', m.group(1).strip())
+        uid = f"MATHINLINEUUID{uuid.uuid4().hex}"
+        math_placeholders[uid] = render_math_to_mathml(m.group(1).strip(), is_block=False)
         return uid
 
     markdown_text = MATH_INLINE_DOLLAR_RE.sub(inline_repl, markdown_text)
     markdown_text = MATH_INLINE_PAREN_RE.sub(inline_repl, markdown_text)
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
-        # Create tasks
-        awaitables = []
-        uids = []
-        for uid, task_info in tasks.items():
-            uids.append(uid)
-            if task_info[0] == 'diagram':
-                awaitables.append(fetch_diagram(client, task_info[1], task_info[2]))
-            elif task_info[0] == 'math_block':
-                awaitables.append(fetch_math(client, task_info[1], True))
-            elif task_info[0] == 'math_inline':
-                awaitables.append(fetch_math(client, task_info[1], False))
-                
-        if awaitables:
+    # Process diagrams (Mermaid, etc.) if any are present
+    if diagram_tasks:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            uids = list(diagram_tasks.keys())
+            awaitables = [
+                fetch_diagram(client, diagram_tasks[uid][0], diagram_tasks[uid][1])
+                for uid in uids
+            ]
             results = await asyncio.gather(*awaitables)
             for uid, html_result in zip(uids, results):
                 markdown_text = markdown_text.replace(uid, html_result)
@@ -146,7 +145,12 @@ async def convert(markdown_text: str) -> str:
     for uid, original_code in code_tasks.items():
         markdown_text = markdown_text.replace(uid, original_code)
 
+    # Render Markdown to HTML
     html = md.render(markdown_text)
+
+    # Safely substitute MathML output after markdown rendering to avoid HTML escaping inside bold/italic
+    for uid, mathml_output in math_placeholders.items():
+        html = html.replace(uid, mathml_output)
 
     # Post-process: wrap wide tables (>5 columns) in a landscape div
     html = wrap_wide_tables(html)

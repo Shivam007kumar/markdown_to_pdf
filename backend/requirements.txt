@@ -21,6 +21,7 @@ jmespath==1.1.0
 limits==5.8.0
 linkify-it-py==2.1.0
 markdown-it-py==4.0.0
+latex2mathml>=3.81.0
 mdit-py-plugins==0.5.0
 mdurl==0.1.2
 packaging==26.0

@@ -96,14 +96,25 @@ def get_base_styles() -> str:
         margin-bottom: 0;
     }
 
-    .katex-display {
+    .katex-display, .math-display {
         margin: 1.5em 0;
         padding: 0.5em 0;
+        text-align: center;
     }
 
     .katex {
         font-size: 1.05em;
         padding: 0 0.1em;
+    }
+
+    math {
+        font-size: 1.05em;
+    }
+
+    math[display="block"] {
+        display: block;
+        margin: 1.2em auto;
+        text-align: center;
     }
 
     /* Print Controls */
