@@ -23,10 +23,19 @@ def get_base_styles() -> str:
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Barlow', sans-serif;
         color: #2c3e50;
-        margin-top: 1.5em;
+        margin-top: 1.2em;
+        margin-bottom: 0.5em;
+        page-break-after: avoid;
+        break-after: avoid;
     }
 
     h1 { border-bottom: 2px solid #eee; padding-bottom: 0.3em; }
+
+    hr {
+        border: none;
+        border-top: 1px solid #e1e4e8;
+        margin: 1.5em 0;
+    }
 
     code, pre {
         font-family: 'Fira Code', monospace;
@@ -119,8 +128,13 @@ def get_base_styles() -> str:
     }
 
     /* Print Controls */
-    /* NOTE: table intentionally excluded — tall tables must be allowed to split across pages */
-    p, blockquote, pre, .katex-display, ul, ol, img {
+    /* NOTE: lists and tables can split across pages naturally to avoid huge blank gaps */
+    blockquote, pre, .katex-display, img {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    li {
         page-break-inside: avoid;
         break-inside: avoid;
     }
