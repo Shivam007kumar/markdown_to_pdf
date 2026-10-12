@@ -63,24 +63,77 @@ async def fetch_diagram(client, diagram_type, code):
             f'</div>\n'
         )
 
-def render_math_to_mathml(content: str, is_block: bool) -> str:
+def batch_render_latex(math_items: list[dict]) -> dict[str, str]:
     """
-    Renders a LaTeX expression to MathML using pure-Python latex2mathml.
-    Falls back gracefully if the formula is malformed.
+    Renders a batch of LaTeX formulas to HTML using local KaTeX via Node.js
+    (installed in frontend/node_modules/katex). Falls back gracefully to latex2mathml
+    if Node/KaTeX is unavailable or fails.
     """
+    if not math_items:
+        return {}
+
+    rendered_map = {}
+    
+    # Try high-quality local KaTeX rendering first
     try:
-        import latex2mathml.converter
-        display = "block" if is_block else "inline"
-        mathml = latex2mathml.converter.convert(content, display=display)
-        if is_block:
-            return f'\n<div class="math-display">{mathml}</div>\n'
-        return mathml
+        import json
+        import subprocess
+        from pathlib import Path
+
+        # Check frontend/node_modules/katex relative to backend
+        katex_path = Path(__file__).resolve().parent.parent.parent / "frontend" / "node_modules" / "katex"
+        node_script = (
+            f'const k=require("{katex_path}"); '
+            'let data=""; '
+            'process.stdin.on("data", c=>data+=c); '
+            'process.stdin.on("end", ()=>{ '
+            '  try { '
+            '    const list=JSON.parse(data); '
+            '    const out=list.map(x=>({id:x.id, html:k.renderToString(x.math, {displayMode:x.is_block, output:"html", throwOnError:false})})); '
+            '    process.stdout.write(JSON.stringify(out)); '
+            '  } catch(e) { process.stderr.write(String(e)); } '
+            '});'
+        )
+
+        p = subprocess.Popen(
+            ["node", "-e", node_script],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        stdout, stderr = p.communicate(input=json.dumps(math_items), timeout=10.0)
+        if p.returncode == 0 and stdout:
+            results = json.loads(stdout)
+            for item in results:
+                rendered_map[item["id"]] = item["html"]
     except Exception:
-        # Fallback to code format if LaTeX syntax is invalid
-        escaped = content.replace("<", "&lt;").replace(">", "&gt;")
-        if is_block:
-            return f'\n<pre class="math-error"><code>{escaped}</code></pre>\n'
-        return f'<code class="math-error">{escaped}</code>'
+        # Fall back to latex2mathml
+        pass
+
+    # For any formulas not yet rendered, use latex2mathml as robust fallback
+    for item in math_items:
+        uid = item["id"]
+        if uid in rendered_map:
+            continue
+        content = item["math"]
+        is_block = item["is_block"]
+        try:
+            import latex2mathml.converter
+            display = "block" if is_block else "inline"
+            mathml = latex2mathml.converter.convert(content, display=display)
+            if is_block:
+                rendered_map[uid] = f'\n<div class="math-display">{mathml}</div>\n'
+            else:
+                rendered_map[uid] = mathml
+        except Exception:
+            escaped = content.replace("<", "&lt;").replace(">", "&gt;")
+            if is_block:
+                rendered_map[uid] = f'\n<pre class="math-error"><code>{escaped}</code></pre>\n'
+            else:
+                rendered_map[uid] = f'<code class="math-error">{escaped}</code>'
+
+    return rendered_map
 
 
 async def convert(markdown_text: str) -> str:
@@ -111,11 +164,11 @@ async def convert(markdown_text: str) -> str:
 
     # Collect math expressions and replace with clean alphanumeric placeholders
     # so markdown-it-py handles inline formatting (like **$math$**) without breaking HTML
-    math_placeholders = {}
+    math_items = []
 
     def block_repl(m):
         uid = f"MATHBLOCKUUID{uuid.uuid4().hex}"
-        math_placeholders[uid] = render_math_to_mathml(m.group(1).strip(), is_block=True)
+        math_items.append({"id": uid, "math": m.group(1).strip(), "is_block": True})
         return uid
 
     markdown_text = MATH_BLOCK_DOLLAR_RE.sub(block_repl, markdown_text)
@@ -123,11 +176,14 @@ async def convert(markdown_text: str) -> str:
 
     def inline_repl(m):
         uid = f"MATHINLINEUUID{uuid.uuid4().hex}"
-        math_placeholders[uid] = render_math_to_mathml(m.group(1).strip(), is_block=False)
+        math_items.append({"id": uid, "math": m.group(1).strip(), "is_block": False})
         return uid
 
     markdown_text = MATH_INLINE_DOLLAR_RE.sub(inline_repl, markdown_text)
     markdown_text = MATH_INLINE_PAREN_RE.sub(inline_repl, markdown_text)
+
+    # Batch render all math formulas in one quick process
+    math_placeholders = batch_render_latex(math_items)
 
     # Process diagrams (Mermaid, etc.) if any are present
     if diagram_tasks:

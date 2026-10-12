@@ -4,6 +4,7 @@ def get_base_styles() -> str:
     """
     return """
     @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;700&family=Fira+Code&display=swap');
+    @import url('https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css');
 
     @page {
         size: A4;
