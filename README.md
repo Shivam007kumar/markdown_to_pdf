@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs.png" alt="MD2PDF Logo" width="100" />
+<img src="docs_white.png" alt="MD2PDF Logo" width="100" />
 
 # MD2PDF
 
