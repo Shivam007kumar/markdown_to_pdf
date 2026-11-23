@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/test_fixtures.mjs && node tests/test_linter.mjs"
+    "test": "node tests/test_fixtures.mjs && node tests/test_linter.mjs && node tests/test_prose_mask.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.2.0",
@@ -17,6 +17,7 @@
     "@uiw/react-codemirror": "^4.23.0",
     "clsx": "^2.1.1",
     "dompurify": "^3.5.0",
+    "harper.js": "^3.2.0",
     "katex": "^0.19.1",
     "localforage": "^1.10.0",
     "lucide-react": "^0.446.0",

@@ -7,7 +7,7 @@ import ExportButton from './components/ExportButton';
 import ShareButton from './components/ShareButton';
 import SharedView from './components/SharedView';
 import WebViewBanner from './components/WebViewBanner';
-import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard, Trash2 } from 'lucide-react';
+import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard, Trash2, SpellCheck } from 'lucide-react';
 
 const DEFAULT_MARKDOWN = '# Hello Markdown\n\nEdit me to see live preview!\n\n$$x^2 + y^2 = z^2$$';
 
@@ -22,6 +22,7 @@ function App() {
   const [landscape, setLandscape] = useState(false);
   const [isMermaidRendering, setIsMermaidRendering] = useState(false);
   const [hasDoubleEscapedMath, setHasDoubleEscapedMath] = useState(false);
+  const [spellcheckEnabled, setSpellcheckEnabled] = useState(true);
 
   const handleFixMathDelimiters = useCallback(() => {
     // Replace all \\(...\\) with \(...\) and \\[...\\] with \[...\] in markdown
@@ -82,6 +83,7 @@ function App() {
     });
     localforage.getItem('md2pdf-title').then(v => { if (v) setTitle(v); });
     localforage.getItem('md2pdf-landscape').then(v => { if (v !== null) setLandscape(!!v); });
+    localforage.getItem('md2pdf-spellcheck').then(v => { if (v !== null && v !== undefined) setSpellcheckEnabled(!!v); });
   }, []);
 
   // Save to draft whenever content changes
@@ -119,6 +121,11 @@ function App() {
   useEffect(() => {
     localforage.setItem('md2pdf-landscape', landscape);
   }, [landscape]);
+
+  // Auto-save spellcheck toggle
+  useEffect(() => {
+    localforage.setItem('md2pdf-spellcheck', spellcheckEnabled);
+  }, [spellcheckEnabled]);
 
   useEffect(() => {
     if (hasUserContent && !hasShownTooltip) {
@@ -268,6 +275,16 @@ function App() {
             <><FileText className="w-4 h-4" /><span>Portrait</span></>
           )}
         </button>
+
+        {/* Spellcheck toggle */}
+        <button
+          onClick={() => setSpellcheckEnabled(prev => !prev)}
+          title={spellcheckEnabled ? 'Disable spellcheck' : 'Enable spellcheck'}
+          className={`hidden md:flex items-center gap-1.5 text-sm font-medium border rounded-lg px-3 py-1.5 transition-colors ${spellcheckEnabled ? 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+        >
+          <SpellCheck className="w-4 h-4" />
+          <span>Spellcheck</span>
+        </button>
         
         <div className="flex justify-end items-center gap-2 md:gap-4">
           <button
@@ -356,6 +373,7 @@ function App() {
                 onChange={(val) => { setMarkdown(val); }} 
                 onImageAdded={(blobUrl, base64) => setImageMap(prev => ({...prev, [blobUrl]: base64}))} 
                 onHasDoubleEscapedMath={setHasDoubleEscapedMath}
+                spellcheckEnabled={spellcheckEnabled}
               />
             )}
           </div>

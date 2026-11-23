@@ -2,11 +2,58 @@ import React, { useRef, useCallback } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
+import { Compartment } from '@codemirror/state';
 import { linter, lintGutter } from '@codemirror/lint';
 import { markdownLint } from '../lib/markdownLinter';
+import { runSpellcheck } from '../lib/spellcheckLinter';
+import { maskNonProse } from '../lib/proseMask';
 
-function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath }) {
+// Compartment for dynamically toggling the spellcheck extension
+const spellcheckCompartment = new Compartment();
+
+function buildSpellcheckExtension(enabled) {
+  if (!enabled) return [];
+  return linter(async (view) => {
+    const text = view.state.doc.toString();
+    if (text.length > 150000) return [];
+    const masked = maskNonProse(text);
+    let harperDiags;
+    try {
+      harperDiags = await runSpellcheck(masked);
+    } catch (_err) {
+      return [];
+    }
+    return harperDiags.map((d) => ({
+      from: d.span.start,
+      to: d.span.end,
+      severity: 'info',
+      message: d.message,
+      actions: d.suggestions.map((s) => ({
+        name: s,
+        apply(view, from, to) {
+          view.dispatch({ changes: { from, to, insert: s } });
+        },
+      })),
+    }));
+  }, { delay: 700 });
+}
+
+function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath, spellcheckEnabled }) {
   const lastDiagsRef = useRef([]);
+  const spellcheckEnabledRef = useRef(spellcheckEnabled);
+  const viewRef = useRef(null);
+
+  // When spellcheckEnabled prop changes, reconfigure the compartment
+  const prevSpellcheckRef = useRef(spellcheckEnabled);
+  if (prevSpellcheckRef.current !== spellcheckEnabled) {
+    prevSpellcheckRef.current = spellcheckEnabled;
+    spellcheckEnabledRef.current = spellcheckEnabled;
+    if (viewRef.current) {
+      viewRef.current.dispatch({
+        effects: spellcheckCompartment.reconfigure(buildSpellcheckExtension(spellcheckEnabled)),
+      });
+    }
+  }
 
   const handleImageFile = (file, view, pos) => {
     if (!file || !file.type.startsWith('image/')) return;
@@ -87,7 +134,11 @@ function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath }) {
           EditorView.lineWrapping,
           lintGutter(),
           linter(linterWithCallback, { delay: 450 }),
+          spellcheckCompartment.of(buildSpellcheckExtension(spellcheckEnabled !== false)),
         ]}
+        onCreateEditor={(view) => {
+          viewRef.current = view;
+        }}
         onChange={(val) => onChange(val)}
         theme="light"
         className="text-base w-full max-w-4xl px-2 sm:px-4 md:px-8 pb-12"
