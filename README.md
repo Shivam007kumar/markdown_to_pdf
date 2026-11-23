@@ -6,7 +6,7 @@
 
 **Convert Markdown into beautiful, print-ready PDFs — instantly.**
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-md2pdf--by.shivam007.dev-black?style=for-the-badge&logo=vercel)](https://md2pdf-by.shivam007.dev)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-md2pdf--by.shivam007.dev-black?style=for-the-badge&logo=amazonaws)](https://md2pdf-by.shivam007.dev)
 [![GitHub Stars](https://img.shields.io/github/stars/Shivam007kumar/markdown_to_pdf?style=for-the-badge&logo=github&color=black)](https://github.com/Shivam007kumar/markdown_to_pdf/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-black?style=for-the-badge)](LICENSE)
 
@@ -126,5 +126,7 @@ Full changelog in [CHANGELOG.md](CHANGELOG.md).
 If MD2PDF saves you time, a ⭐ on GitHub goes a long way.
 
 **[Star the repo →](https://github.com/Shivam007kumar/markdown_to_pdf)**
+
+<sub>GrowthX × AWS Off Campus Builder Code: `3HNVHB`</sub>
 
 </div>
