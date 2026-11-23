@@ -12,8 +12,17 @@ backend/.env
 backend/.pytest_cache/
 *.pyc
 
+# Rust
+backend/target/
+
 # OS
 .DS_Store
 
 # Keys
 md2pdf-key.pem
+*.pem
+.agents/
+.worktrees/
+
+# Root-level .env (belt-and-suspenders; frontend/.env and backend/.env are listed above)
+/.env

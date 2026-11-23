@@ -1,73 +1,67 @@
-import React, { useMemo } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeRaw from 'rehype-raw';
-import pako from 'pako';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { renderDocument, renderMermaidDiagrams } from '../lib/renderDocument';
 
-function Preview({ markdown, customCss }) {
-  // Fix: Move custom CSS sanitization exclusively inside useMemo to avoid redundant executions on every keystroke
+function Preview({ markdown, customCss, onRenderingChange }) {
+  const [html, setHtml] = useState('');
+  const containerRef = useRef(null);
+  const renderIdRef = useRef(0);
+
+  // Custom CSS style element (keep existing behavior: basic </style> breakout protection)
   const styleElement = useMemo(() => {
-    // Basic protection against closing tag breakouts, documented as a permissive implementation
-    const sanitizedCss = customCss.replace(/<\/?style.*?>/gi, '');
+    const sanitizedCss = (customCss || '').replace(/<\/?style.*?>/gi, '');
     return <style dangerouslySetInnerHTML={{ __html: sanitizedCss }} />;
   }, [customCss]);
 
-  // Normalize LaTeX math delimiters to standard Markdown $ and $$ delimiters so remark-math can parse them
-  const processedMarkdown = useMemo(() => {
-    let md = markdown || '';
-    // Replace block math \[ \] or \\[ \\] with $$
-    md = md.replace(/\\\\?\[([\s\S]*?)\\\\?\]/g, '$$$$$1$$$$');
-    // Replace inline math \( \) or \\( \\) with $
-    md = md.replace(/\\\\?\(([\s\S]*?)\\\\?\)/g, '$$$1$$');
-    return md;
+  // Render pipeline: debounced, with render-ID cancellation for stale async mermaid
+  useEffect(() => {
+    // Increment render ID; mermaid callbacks will check this before applying SVGs
+    const currentId = ++renderIdRef.current;
+
+    const timer = setTimeout(async () => {
+      try {
+        const rendered = await renderDocument(markdown || '');
+
+        // Check the render is still current before setting state
+        if (renderIdRef.current !== currentId) return;
+
+        setHtml(rendered);
+
+        // After React flushes the HTML into the DOM, run mermaid async rendering
+        // We use a microtask (via queueMicrotask or rAF) so the ref is populated
+        requestAnimationFrame(() => {
+          if (renderIdRef.current !== currentId) return;
+          if (containerRef.current) {
+            onRenderingChange?.(true);
+            (async () => {
+              try {
+                await renderMermaidDiagrams(
+                  containerRef.current,
+                  currentId,
+                  () => renderIdRef.current
+                );
+              } finally {
+                if (renderIdRef.current === currentId) {
+                  onRenderingChange?.(false);
+                }
+              }
+            })();
+          }
+        });
+      } catch (err) {
+        console.error('[Preview] renderDocument error:', err);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [markdown]);
 
   return (
     <div className="p-10 max-w-4xl mx-auto shadow-sm bg-white min-h-[120%] mb-10 preview-container">
       {styleElement}
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeRaw, rehypeKatex]}
-        components={{
-          // Fix: Remove deprecated 'inline' prop for ReactMarkdown v9
-          code({ className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
-            const language = match ? match[1] : '';
-            
-            const supportedDiagrams = ['mermaid', 'plantuml', 'd2', 'excalidraw', 'graphviz', 'structurizr'];
-            if (match && supportedDiagrams.includes(language)) {
-              // Handle supported diagrams by rendering them via Kroki.io or Mermaid.ink
-              const code = String(children).trim();
-              try {
-                if (language === 'mermaid') {
-                  const data = JSON.stringify({ code, mermaid: { theme: 'default' } });
-                  // mermaid.ink requires url-safe base64 without padding
-                  const encoded = btoa(data).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-                  return <img src={`https://mermaid.ink/img/${encoded}`} alt="mermaid diagram" className="mx-auto" />;
-                } else {
-                  const data = new TextEncoder().encode(code);
-                  const compressed = pako.deflate(data, { level: 9 });
-                  const binaryString = new Uint8Array(compressed).reduce((acc, byte) => acc + String.fromCharCode(byte), '');
-                  const encoded = btoa(binaryString).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-                  return <img src={`https://kroki.io/${language}/svg/${encoded}`} alt={`${language} diagram`} className="mx-auto" />;
-                }
-              } catch (e) {
-                return <code>{code}</code>;
-              }
-            }
-            
-            return (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            );
-          }
-        }}
-      >
-        {processedMarkdown}
-      </ReactMarkdown>
+      <div
+        ref={containerRef}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
     </div>
   );
 }

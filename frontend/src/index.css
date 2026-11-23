@@ -1,3 +1,8 @@
+@import 'katex/dist/katex.min.css';
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/fira-code/400.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,19 +46,35 @@ body {
 .preview-container p { margin: 1em 0; }
 
 .preview-container pre {
-  background: #2d2d2d;
-  color: #f8f8f2;
+  background: #1e1e1e;
+  color: #d4d4d4;
   padding: 1rem;
   border-radius: 0.5rem;
-  overflow-x: auto;
+  overflow-x: hidden;
   font-family: 'Fira Code', monospace;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
-.preview-container code:not(pre code) {
+.preview-container pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+/* Inline code pill — only for code NOT inside a pre block */
+.preview-container :not(pre) > code {
   background: #f1f5f9;
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.25rem;
+  color: #0f172a;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-size: 0.88em;
   font-family: 'Fira Code', monospace;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .preview-container blockquote {
@@ -65,19 +86,28 @@ body {
 
 .preview-container table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin: 1.5em 0;
+  overflow-x: hidden;
 }
 
 .preview-container th, 
 .preview-container td {
   border: 1px solid #e2e8f0;
-  padding: 0.5rem 1rem;
+  padding: 5px 6px;
   text-align: left;
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
 }
 
 .preview-container tr:nth-child(even) {
   background-color: #f8fafc;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* List Indentation Fixes */
@@ -112,9 +142,318 @@ body {
   padding: 0.5em 0;
   overflow-x: auto;
   overflow-y: hidden;
+  text-align: center;
 }
 
 .preview-container .katex {
   font-size: 1.05em;
   padding: 0 0.1em;
+}
+
+/* Math error fallback box */
+.preview-container .math-error {
+  display: inline-block;
+  border: 1px solid #ef4444;
+  background: #fef2f2;
+  color: #dc2626;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875em;
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Diagram error fallback box */
+.preview-container .diagram-error {
+  border: 1px solid #f97316;
+  background: #fff7ed;
+  color: #c2410c;
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  font-size: 0.875em;
+  margin: 1em 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Mermaid SVG max-width */
+.preview-container .mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Offline diagram fallback */
+.offline-diagram {
+  margin: 1em 0;
+}
+
+.offline-diagram-note {
+  font-size: 0.8em;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0 0 4px 0;
+  padding: 0;
+}
+
+/* CodeMirror lint gutter */
+.cm-lintGutter { width: 16px; }
+.cm-diagnostic-error { border-left: 3px solid #ef4444; }
+.cm-diagnostic-warning { border-left: 3px solid #f59e0b; }
+
+/* ============================================================
+   Orientation pill toggle (Portrait ↔ Landscape)
+   Implements a sliding white thumb using an absolutely-positioned
+   ::before pseudo-element that translates between the two sides.
+   ============================================================ */
+.orientation-toggle {
+  display: flex;
+  position: relative;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  padding: 2px;
+  gap: 0;
+}
+
+/* Sliding white thumb — covers whichever button is active */
+.orientation-toggle::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  /* Width = 50% of the container minus the 2px padding on each side */
+  width: calc(50% - 2px);
+  left: 2px;
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* When landscape is active (second button), slide the thumb to the right */
+.orientation-toggle.landscape::before {
+  transform: translateX(calc(100% + 0px));
+}
+
+.orientation-option {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+  transition: color 0.2s;
+}
+
+.orientation-option.active {
+  color: #111827;
+  background: transparent; /* thumb is handled by ::before */
+  box-shadow: none;
+}
+
+@media print {
+  /* CRITICAL: un-clip the document so multi-page content prints fully.
+     html and body have height/overflow set by Tailwind base styles;
+     #root, the flex-col h-screen wrapper, main, and the flex children
+     all need unconstrained height so Chrome doesn't clip to page 1. */
+  html, body, #root {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+  }
+
+  /* Hide all app chrome */
+  header,
+  .webview-banner,
+  [data-print-hide="true"],
+  nav,
+  aside,
+  .fixed {
+    display: none !important;
+  }
+
+  /* Semantic layout wrappers — un-clip so multi-page content prints fully.
+     .app-shell is the outermost wrapper (flex flex-col h-screen overflow-hidden).
+     .split-workspace is the main split-pane container. */
+  .app-shell, .split-workspace {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+  }
+
+  /* Fallback for older builds without .app-shell: target #root > div directly */
+  #root > div {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+  }
+
+  /* Main layout container */
+  main {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    position: static !important;
+    flex: none !important;
+  }
+
+  /* Hide editor in print — covers both mobile overlay and desktop half */
+  .editor-pane, .export-button, .share-button, .toolbar {
+    display: none !important;
+  }
+
+  /* Fallback: hide the editor pane (first child of main) */
+  main > div:first-child {
+    display: none !important;
+  }
+
+  /* Preview fills full width in print */
+  .preview-pane {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    flex: none !important;
+  }
+
+  /* Fallback: the preview pane wrapper div (second child of main) */
+  main > div:last-child {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    flex: none !important;
+  }
+
+  /* Hide the "Live Preview" toolbar bar inside the preview pane */
+  main > div:last-child > div:first-child {
+    display: none !important;
+  }
+
+  /* The inner scroll wrapper */
+  .preview-container, .preview-content {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex: none !important;
+  }
+
+  /* Fallback for inner scroll wrapper */
+  main > div:last-child > div:last-child {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    padding: 0 !important;
+    flex: none !important;
+  }
+
+  /* Preview container itself (the innermost content wrapper rendered by Preview.jsx) */
+  .preview-container {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Table print styles */
+  .preview-container table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    font-size: 8.5pt !important;
+  }
+
+  .preview-container table th,
+  .preview-container table td {
+    font-size: 8.5pt !important;
+    padding: 4px 5px !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+  }
+
+  /* Pagination rules */
+  .preview-container pre {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-all !important;
+    overflow-x: visible !important;
+    max-width: 100% !important;
+  }
+
+  .preview-container pre code {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-all !important;
+  }
+
+  pre, blockquote, .katex-display, .mermaid-container, .math-error, .diagram-error, tr, img {
+    break-inside: avoid;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+  }
+
+  /* NOTE: intentionally NOT adding break-inside: avoid on table, ul, or ol */
+
+  /* SharedView container: allow full multi-page print */
+  .shared-view-container {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+}
+
+@page {
+  size: A4 portrait;
+  margin: 20mm;
 }

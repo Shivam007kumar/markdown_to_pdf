@@ -15,5 +15,4 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           cd /home/ubuntu/markdown_to_pdf/backend
-          source venv/bin/activate
           python3 health_check.py --weekly

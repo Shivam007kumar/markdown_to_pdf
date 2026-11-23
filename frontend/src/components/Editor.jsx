@@ -1,13 +1,63 @@
-import React from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
+import { Compartment } from '@codemirror/state';
+import { linter, lintGutter } from '@codemirror/lint';
+import { markdownLint } from '../lib/markdownLinter';
+import { runSpellcheck, disposeSpellcheckLinter } from '../lib/spellcheckLinter';
+import { maskNonProse } from '../lib/proseMask';
 
-function Editor({ value, onChange, onImageAdded }) {
+// Compartment for dynamically toggling the spellcheck extension
+const spellcheckCompartment = new Compartment();
+
+function buildSpellcheckExtension(enabled) {
+  if (!enabled) return [];
+  return linter(async (view) => {
+    const text = view.state.doc.toString();
+    if (text.length > 150000) return [];
+    const masked = maskNonProse(text);
+    let harperDiags;
+    try {
+      harperDiags = await runSpellcheck(masked);
+    } catch (_err) {
+      return [];
+    }
+    return harperDiags.map((d) => ({
+      from: d.span.start,
+      to: d.span.end,
+      severity: 'info',
+      message: d.message,
+      actions: d.suggestions.map((s) => ({
+        name: s,
+        apply(view, from, to) {
+          view.dispatch({ changes: { from, to, insert: s } });
+        },
+      })),
+    }));
+  }, { delay: 700 });
+}
+
+function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath, spellcheckEnabled }) {
+  const lastDiagsRef = useRef([]);
+  const spellcheckEnabledRef = useRef(spellcheckEnabled);
+  const viewRef = useRef(null);
+
+  // When spellcheckEnabled prop changes, reconfigure the compartment
+  const prevSpellcheckRef = useRef(spellcheckEnabled);
+  if (prevSpellcheckRef.current !== spellcheckEnabled) {
+    prevSpellcheckRef.current = spellcheckEnabled;
+    spellcheckEnabledRef.current = spellcheckEnabled;
+    if (viewRef.current) {
+      viewRef.current.dispatch({
+        effects: spellcheckCompartment.reconfigure(buildSpellcheckExtension(spellcheckEnabled)),
+      });
+    }
+  }
+
   const handleImageFile = (file, view, pos) => {
     if (!file || !file.type.startsWith('image/')) return;
     
-    // Create base64 encoding to send to backend, but a quick blob for the frontend preview
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target.result;
@@ -25,6 +75,27 @@ function Editor({ value, onChange, onImageAdded }) {
     };
     reader.readAsDataURL(file);
   };
+
+  // Linter wrapper that also notifies parent about double-escaped math warnings
+  const linterWithCallback = useCallback((view) => {
+    return markdownLint(view).then((diags) => {
+      lastDiagsRef.current = diags;
+      const hasDoubleEscaped = diags.some(
+        (d) => d.severity === 'warning' && d.message.includes('Double-escaped')
+      );
+      if (onHasDoubleEscapedMath) {
+        onHasDoubleEscapedMath(hasDoubleEscaped);
+      }
+      return diags;
+    });
+  }, [onHasDoubleEscapedMath]);
+
+  // Dispose the WorkerLinter when this component unmounts
+  useEffect(() => {
+    return () => {
+      disposeSpellcheckLinter().catch(console.warn);
+    };
+  }, []);
 
   const domHandlers = EditorView.domEventHandlers({
     paste(event, view) {
@@ -64,7 +135,17 @@ function Editor({ value, onChange, onImageAdded }) {
       <CodeMirror
         value={value}
         height="100%"
-        extensions={[markdown(), domHandlers, EditorView.lineWrapping]}
+        extensions={[
+          markdown(),
+          domHandlers,
+          EditorView.lineWrapping,
+          lintGutter(),
+          linter(linterWithCallback, { delay: 450 }),
+          spellcheckCompartment.of(buildSpellcheckExtension(spellcheckEnabled !== false)),
+        ]}
+        onCreateEditor={(view) => {
+          viewRef.current = view;
+        }}
         onChange={(val) => onChange(val)}
         theme="light"
         className="text-base w-full max-w-4xl px-2 sm:px-4 md:px-8 pb-12"

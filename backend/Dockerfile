@@ -1,32 +1,27 @@
-# Dockerfile for Backend
-FROM python:3.11-slim
-
-# Install system dependencies for WeasyPrint
-RUN apt-get update && apt-get install -y \
-    python3-cffi \
-    python3-brotli \
-    libpango-1.0-0 \
-    libharfbuzz0b \
-    libpangoft2-1.0-0 \
-    libpangocairo-1.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
+# Stage 1: builder
+FROM rust:1.85-slim-bookworm AS builder
 WORKDIR /app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Cache dependencies: copy manifests first, build dummy main, then real source
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo 'fn main() {}' > src/main.rs && \
+    cargo build --release && \
+    rm -rf src
 
-COPY app/ ./app/
+COPY src ./src
+RUN touch src/main.rs && cargo build --release
 
-# Expose port 8000
-EXPOSE 8000
+# Stage 2: runtime
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd -m appuser
 
-# Fix: Create a non-root user
-RUN useradd -m appuser && chown -R appuser:appuser /app
+COPY --from=builder /app/target/release/server /usr/local/bin/server
+
 USER appuser
+EXPOSE 8000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
-# Fix: Add a healthcheck for orchestrators using Python since curl isn't in slim
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["server"]

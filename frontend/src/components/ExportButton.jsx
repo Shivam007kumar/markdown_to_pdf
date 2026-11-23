@@ -1,78 +1,64 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { Download, Loader2, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { Download, Loader2 } from 'lucide-react';
 
-function ExportButton({ markdown, customCss }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const errorTimerRef = useRef(null);
+function ExportButton({ title, landscape, isPrinting }) {
+  const handleExport = () => {
+    if (isPrinting) return;
 
-  // Fix: Cleanup timeout on component unmount
-  useEffect(() => {
-    return () => {
-      if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
+    // Inject dynamic @page orientation style
+    const existingStyle = document.getElementById('page-orientation-style');
+    if (existingStyle) existingStyle.remove();
+    const styleEl = document.createElement('style');
+    styleEl.id = 'page-orientation-style';
+    styleEl.textContent = landscape
+      ? '@page { size: A4 landscape; margin: 20mm; }'
+      : '@page { size: A4 portrait; margin: 20mm; }';
+    document.head.appendChild(styleEl);
+
+    // Set document title for PDF filename
+    const prevTitle = document.title;
+    document.title = (title && title.trim()) ? title.trim() : 'MD2PDF-Document';
+
+    // Print
+    window.print();
+
+    // Restore after print dialog closes
+    const restoreTitle = () => {
+      document.title = prevTitle;
+      styleEl.remove();
+      window.removeEventListener('afterprint', restoreTitle);
     };
-  }, []);
-
-  const handleExport = async () => {
-    if (loading) return; // Fix: Prevent double-click race conditions
-    if (!markdown || markdown.trim() === '') {
-      setError('Cannot export an empty document.');
-      errorTimerRef.current = setTimeout(() => setError(null), 6000);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
-    
-    try {
-      const response = await axios.post('/api/export', {
-        markdown,
-        custom_css: customCss
-      });
-
-      const { url } = response.data;
-      if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } else {
-        throw new Error('No download URL received');
-      }
-    } catch (err) {
-      console.error('Export failed:', err);
-      // Fix: Use inline error state instead of jarring window.alert()
-      setError('Failed to generate PDF. Please try again.');
-      errorTimerRef.current = setTimeout(() => setError(null), 6000); // extended to 6s per review
-    } finally {
-      setLoading(false);
-    }
+    window.addEventListener('afterprint', restoreTitle);
+    // Fallback timer in case afterprint does not fire
+    setTimeout(() => {
+      document.title = prevTitle;
+      if (styleEl.parentNode) styleEl.remove();
+    }, 60000);
   };
 
   return (
-    <div className="flex items-center gap-3">
-      {error && (
-        <span className="text-red-500 text-sm font-medium flex items-center gap-1 animate-pulse">
-          <AlertCircle className="w-4 h-4" />
-          {error}
-        </span>
+    <button
+      onClick={handleExport}
+      disabled={isPrinting}
+      title="Tip: Turn off 'Headers and footers' in Chrome's print dialog."
+      className={`export-button flex items-center gap-2 px-3 py-1.5 h-9 rounded-lg font-semibold transition-all shadow-lg active:scale-95 text-sm ${
+        isPrinting
+          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+          : 'bg-slate-900 text-white hover:bg-slate-800'
+      }`}
+    >
+      {isPrinting ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Preparing…
+        </>
+      ) : (
+        <>
+          <Download className="w-4 h-4" />
+          Export PDF
+        </>
       )}
-      <button
-        onClick={handleExport}
-        disabled={loading}
-        className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg active:scale-95 ${loading ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-      >
-        {loading ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Exporting...
-          </>
-        ) : (
-          <>
-            <Download className="w-4 h-4" />
-            Export PDF
-          </>
-        )}
-      </button>
-    </div>
+    </button>
   );
 }
 
