@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useRef, useCallback } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
+import { linter, lintGutter } from '@codemirror/lint';
+import { markdownLint } from '../lib/markdownLinter';
 
-function Editor({ value, onChange, onImageAdded }) {
+function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath }) {
+  const lastDiagsRef = useRef([]);
+
   const handleImageFile = (file, view, pos) => {
     if (!file || !file.type.startsWith('image/')) return;
     
-    // Create base64 encoding to send to backend, but a quick blob for the frontend preview
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target.result;
@@ -25,6 +28,20 @@ function Editor({ value, onChange, onImageAdded }) {
     };
     reader.readAsDataURL(file);
   };
+
+  // Linter wrapper that also notifies parent about double-escaped math warnings
+  const linterWithCallback = useCallback((view) => {
+    return markdownLint(view).then((diags) => {
+      lastDiagsRef.current = diags;
+      const hasDoubleEscaped = diags.some(
+        (d) => d.severity === 'warning' && d.message.includes('Double-escaped')
+      );
+      if (onHasDoubleEscapedMath) {
+        onHasDoubleEscapedMath(hasDoubleEscaped);
+      }
+      return diags;
+    });
+  }, [onHasDoubleEscapedMath]);
 
   const domHandlers = EditorView.domEventHandlers({
     paste(event, view) {
@@ -64,7 +81,13 @@ function Editor({ value, onChange, onImageAdded }) {
       <CodeMirror
         value={value}
         height="100%"
-        extensions={[markdown(), domHandlers, EditorView.lineWrapping]}
+        extensions={[
+          markdown(),
+          domHandlers,
+          EditorView.lineWrapping,
+          lintGutter(),
+          linter(linterWithCallback, { delay: 450 }),
+        ]}
         onChange={(val) => onChange(val)}
         theme="light"
         className="text-base w-full max-w-4xl px-2 sm:px-4 md:px-8 pb-12"

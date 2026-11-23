@@ -7,10 +7,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node tests/test_fixtures.mjs"
+    "test": "node tests/test_fixtures.mjs && node tests/test_linter.mjs"
   },
   "dependencies": {
     "@codemirror/lang-markdown": "^6.2.0",
+    "@codemirror/lint": "^6.9.8",
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/fira-code": "^5.3.0",
     "@uiw/react-codemirror": "^4.23.0",

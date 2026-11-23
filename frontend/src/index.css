@@ -196,6 +196,11 @@ body {
   padding: 0;
 }
 
+/* CodeMirror lint gutter */
+.cm-lintGutter { width: 16px; }
+.cm-diagnostic-error { border-left: 3px solid #ef4444; }
+.cm-diagnostic-warning { border-left: 3px solid #f59e0b; }
+
 @media print {
   /* CRITICAL: un-clip the document so multi-page content prints fully.
      html and body have height/overflow set by Tailwind base styles;

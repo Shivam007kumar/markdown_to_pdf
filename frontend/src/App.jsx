@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import localforage from 'localforage';
 import Editor from './components/Editor';
 import Preview from './components/Preview';
@@ -21,7 +21,23 @@ function App() {
   const [title, setTitle] = useState('');
   const [landscape, setLandscape] = useState(false);
   const [isMermaidRendering, setIsMermaidRendering] = useState(false);
-  
+  const [hasDoubleEscapedMath, setHasDoubleEscapedMath] = useState(false);
+
+  const handleFixMathDelimiters = useCallback(() => {
+    // Replace all \\(...\\) with \(...\) and \\[...\\] with \[...\] in markdown
+    setMarkdown((prev) =>
+      prev
+        .replace(/\\\\(\([\s\S]*?\\\\[)])/g, (_, inner) => {
+          const content = inner.slice(1, inner.lastIndexOf('\\\\'));
+          return `\\(${content}\\)`;
+        })
+        .replace(/\\\\(\[[\s\S]*?\\\\[]])/g, (_, inner) => {
+          const content = inner.slice(1, inner.lastIndexOf('\\\\'));
+          return `\\[${content}\\]`;
+        })
+    );
+  }, []);
+
   // Mobile states
   const [activeMobileView, setActiveMobileView] = useState('preview'); // 'preview', 'editor', 'css'
   const [showTooltip, setShowTooltip] = useState(false);
@@ -310,13 +326,24 @@ function App() {
             </div>
             
             {/* Mobile "Done" button to close editor overlay */}
-            <button 
-              onClick={() => setActiveMobileView('preview')}
-              className="md:hidden flex items-center gap-1.5 px-4 text-sm font-semibold text-blue-600 hover:text-blue-800"
-            >
-              <Check className="w-4 h-4" />
-              Done
-            </button>
+            <div className="flex items-center gap-2">
+              {hasDoubleEscapedMath && (
+                <button
+                  onClick={handleFixMathDelimiters}
+                  title='Fix double-escaped math delimiters (\\( → \()'
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 transition-colors"
+                >
+                  Fix \\( delimiters
+                </button>
+              )}
+              <button 
+                onClick={() => setActiveMobileView('preview')}
+                className="md:hidden flex items-center gap-1.5 px-4 text-sm font-semibold text-blue-600 hover:text-blue-800"
+              >
+                <Check className="w-4 h-4" />
+                Done
+              </button>
+            </div>
           </div>
 
           {/* Editor Container */}
@@ -328,6 +355,7 @@ function App() {
                 value={markdown} 
                 onChange={(val) => { setMarkdown(val); }} 
                 onImageAdded={(blobUrl, base64) => setImageMap(prev => ({...prev, [blobUrl]: base64}))} 
+                onHasDoubleEscapedMath={setHasDoubleEscapedMath}
               />
             )}
           </div>
