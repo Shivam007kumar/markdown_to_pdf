@@ -12,6 +12,9 @@ backend/.env
 backend/.pytest_cache/
 *.pyc
 
+# Rust
+backend/target/
+
 # OS
 .DS_Store
 

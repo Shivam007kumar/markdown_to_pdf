@@ -336,6 +336,13 @@ body {
   }
 
   /* NOTE: intentionally NOT adding break-inside: avoid on table, ul, or ol */
+
+  /* SharedView container: allow full multi-page print */
+  .shared-view-container {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
 }
 
 @page {

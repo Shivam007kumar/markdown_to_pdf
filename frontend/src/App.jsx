@@ -4,6 +4,8 @@ import Editor from './components/Editor';
 import Preview from './components/Preview';
 import CSSEditor from './components/CSSEditor';
 import ExportButton from './components/ExportButton';
+import ShareButton from './components/ShareButton';
+import SharedView from './components/SharedView';
 import WebViewBanner from './components/WebViewBanner';
 import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard, Trash2 } from 'lucide-react';
 
@@ -24,6 +26,32 @@ function App() {
   const [activeMobileView, setActiveMobileView] = useState('preview'); // 'preview', 'editor', 'css'
   const [showTooltip, setShowTooltip] = useState(false);
   const [hasShownTooltip, setHasShownTooltip] = useState(false);
+
+  // Routing: check for /shared/:id before any localforage reads
+  const sharedMatch = window.location.pathname.match(/^\/shared\/([A-Za-z0-9]{12})\/?$/);
+  const isSharedPath = window.location.pathname.startsWith('/shared/');
+  if (isSharedPath && !sharedMatch) {
+    // Invalid /shared/... path — render not-found
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 p-6">
+        <div className="text-center max-w-sm flex flex-col gap-4">
+          <p className="text-2xl font-bold text-slate-800">Link not found</p>
+          <p className="text-slate-500 text-sm leading-relaxed">
+            This shared link has expired or does not exist.
+          </p>
+          <a
+            href="/"
+            className="inline-block mt-2 px-6 py-2.5 bg-slate-900 text-white font-semibold rounded-xl shadow hover:bg-slate-700 transition-colors text-sm"
+          >
+            Open MD2PDF Editor
+          </a>
+        </div>
+      </div>
+    );
+  }
+  if (sharedMatch) {
+    return <SharedView id={sharedMatch[1]} />;
+  }
 
   // Load draft on mount
   useEffect(() => {
@@ -247,6 +275,7 @@ function App() {
             <span className="hidden lg:inline">Star on GitHub</span>
           </a>
           <ExportButton title={title} landscape={landscape} isPrinting={isMermaidRendering} />
+          <ShareButton title={title} markdown={resolvedMarkdownForExport} customCss={customCss} />
         </div>
       </header>
 
