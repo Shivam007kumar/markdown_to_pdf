@@ -16,7 +16,7 @@ import { join, dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const REPO_ROOT = join(__dirname, '../../..');
+const REPO_ROOT = join(__dirname, '../..');
 const FIXTURES_DIR = join(REPO_ROOT, 'tests/fixtures');
 const RENDER_MODULE = join(REPO_ROOT, 'frontend/src/lib/renderDocument.js');
 const FRONTEND_NODE_MODULES = join(REPO_ROOT, 'frontend/node_modules');
