@@ -17,13 +17,6 @@
  */
 
 // ---------------------------------------------------------------------------
-// Helper: replace every char with ' ' except '\n' which stays as '\n'
-// ---------------------------------------------------------------------------
-function replaceWithSpaces(str) {
-  return str.split('').map(ch => ch === '\n' ? '\n' : ' ').join('');
-}
-
-// ---------------------------------------------------------------------------
 // Currency heuristic (matches renderDocument.js / markdownLinter.js logic)
 // ---------------------------------------------------------------------------
 function looksLikeMath(content) {

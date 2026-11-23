@@ -39,7 +39,7 @@ function extractMermaid(text) {
     const idx = diagrams.length;
     diagrams.push({ src: src.trim() });
     count++;
-    return `MERMAID_${idx}`;
+    return `@@MERMAID_${idx}@@`;
   });
 
   return { result, diagrams };
@@ -80,21 +80,21 @@ function maskCodeBlocks(text) {
   let result = text.replace(/^(`{3,}|~{3,})([ \t]*[^\n]*)?\n([\s\S]*?)\n?\1[ \t]*$/gm, (match) => {
     const idx = store.length;
     store.push(match);
-    return `CODE_BLOCK_${idx}`;
+    return `@@CODE_${idx}@@`;
   });
 
   // Multi-backtick inline code spans (e.g. `` `code with backtick` ``)
   result = result.replace(/(`{2,})([^`][\s\S]*?[^`])\1/g, (match) => {
     const idx = store.length;
     store.push(match);
-    return `CODE_BLOCK_${idx}`;
+    return `@@CODE_${idx}@@`;
   });
 
   // Single backtick inline code
   result = result.replace(/`([^`\n]+)`/g, (match) => {
     const idx = store.length;
     store.push(match);
-    return `CODE_BLOCK_${idx}`;
+    return `@@CODE_${idx}@@`;
   });
 
   return { result, store };
@@ -221,7 +221,7 @@ function extractMath(text) {
   const store = (latex, display) => {
     const idx = exprs.length;
     exprs.push({ latex, display });
-    return `MATH_${idx}`;
+    return `@@MATH_${idx}@@`;
   };
 
   let result = text;
@@ -275,9 +275,7 @@ export async function renderDocument(markdownText) {
 
   // Restore code placeholders — let markdown-it render them naturally
   let textForMd = noMath;
-  for (let i = codeStore.length - 1; i >= 0; i--) {
-    textForMd = textForMd.replace(`CODE_BLOCK_${i}`, () => codeStore[i]);
-  }
+  textForMd = textForMd.replace(/@@CODE_(\d+)@@/g, (_, idx) => codeStore[+idx]);
 
   // A6: markdown-it render
   let rawHtml = md.render(textForMd);
@@ -301,8 +299,8 @@ export async function renderDocument(markdownText) {
   }
 
   // A8: KaTeX substitution (after DOMPurify so KaTeX HTML is never stripped)
-  for (let i = 0; i < mathExprs.length; i++) {
-    const { latex, display } = mathExprs[i];
+  sanitized = sanitized.replace(/@@MATH_(\d+)@@/g, (_, idx) => {
+    const { latex, display } = mathExprs[+idx];
     let rendered;
     try {
       rendered = katex.renderToString(latex, { displayMode: display, throwOnError: true });
@@ -314,20 +312,16 @@ export async function renderDocument(markdownText) {
         .replace(/"/g, '&quot;');
       rendered = `<span class="math-error" title="KaTeX error: ${escapedLatex}">${escapedLatex}</span>`;
     }
-    sanitized = sanitized.replace(`MATH_${i}`, () => rendered);
-  }
+    return rendered;
+  });
 
   // A9: Mermaid container injection (async rendering happens in renderMermaidDiagrams)
-  for (let i = 0; i < mermaidDiagrams.length; i++) {
-    const escapedSrc = mermaidDiagrams[i].src
+  sanitized = sanitized.replace(/@@MERMAID_(\d+)@@/g, (_, idx) => {
+    const escapedSrc = mermaidDiagrams[+idx].src
       .replace(/&/g, '&amp;')
       .replace(/"/g, '&quot;');
-    sanitized = sanitized.replace(
-      `MERMAID_${i}`,
-      () =>
-        `<div class="mermaid-container" data-mermaid-index="${i}" data-mermaid-src="${escapedSrc}"></div>`
-    );
-  }
+    return `<div class="mermaid-container" data-mermaid-index="${idx}" data-mermaid-src="${escapedSrc}"></div>`;
+  });
 
   return sanitized;
 }

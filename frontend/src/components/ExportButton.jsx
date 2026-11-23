@@ -37,33 +37,28 @@ function ExportButton({ title, landscape, isPrinting }) {
   };
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <button
-        onClick={handleExport}
-        disabled={isPrinting}
-        title="Tip: Turn off 'Headers and footers' in Chrome's print dialog."
-        className={`flex items-center gap-2 px-6 py-2 rounded-lg font-semibold transition-all shadow-lg active:scale-95 ${
-          isPrinting
-            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
-            : 'bg-slate-900 text-white hover:bg-slate-800'
-        }`}
-      >
-        {isPrinting ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Preparing…
-          </>
-        ) : (
-          <>
-            <Download className="w-4 h-4" />
-            Export PDF
-          </>
-        )}
-      </button>
-      <span className="text-[10px] text-slate-400 hidden md:block">
-        Tip: Turn off &quot;Headers and footers&quot; in Chrome&apos;s print dialog.
-      </span>
-    </div>
+    <button
+      onClick={handleExport}
+      disabled={isPrinting}
+      title="Tip: Turn off 'Headers and footers' in Chrome's print dialog."
+      className={`export-button flex items-center gap-2 px-3 py-1.5 h-9 rounded-lg font-semibold transition-all shadow-lg active:scale-95 text-sm ${
+        isPrinting
+          ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+          : 'bg-slate-900 text-white hover:bg-slate-800'
+      }`}
+    >
+      {isPrinting ? (
+        <>
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Preparing…
+        </>
+      ) : (
+        <>
+          <Download className="w-4 h-4" />
+          Export PDF
+        </>
+      )}
+    </button>
   );
 }
 

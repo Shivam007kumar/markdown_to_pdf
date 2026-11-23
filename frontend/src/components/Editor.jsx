@@ -1,11 +1,11 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useEffect } from 'react';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown } from '@codemirror/lang-markdown';
 import { EditorView } from '@codemirror/view';
 import { Compartment } from '@codemirror/state';
 import { linter, lintGutter } from '@codemirror/lint';
 import { markdownLint } from '../lib/markdownLinter';
-import { runSpellcheck } from '../lib/spellcheckLinter';
+import { runSpellcheck, disposeSpellcheckLinter } from '../lib/spellcheckLinter';
 import { maskNonProse } from '../lib/proseMask';
 
 // Compartment for dynamically toggling the spellcheck extension
@@ -89,6 +89,13 @@ function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath, spellch
       return diags;
     });
   }, [onHasDoubleEscapedMath]);
+
+  // Dispose the WorkerLinter when this component unmounts
+  useEffect(() => {
+    return () => {
+      disposeSpellcheckLinter();
+    };
+  }, []);
 
   const domHandlers = EditorView.domEventHandlers({
     paste(event, view) {

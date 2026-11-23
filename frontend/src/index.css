@@ -201,6 +201,37 @@ body {
 .cm-diagnostic-error { border-left: 3px solid #ef4444; }
 .cm-diagnostic-warning { border-left: 3px solid #f59e0b; }
 
+/* ============================================================
+   Orientation pill toggle (Portrait ↔ Landscape)
+   ============================================================ */
+.orientation-toggle {
+  display: flex;
+  background: #e5e7eb;
+  border-radius: 9999px;
+  padding: 2px;
+  gap: 0;
+}
+
+.orientation-option {
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+  background: transparent;
+  color: #6b7280;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.orientation-option.active {
+  background: white;
+  color: #111827;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 @media print {
   /* CRITICAL: un-clip the document so multi-page content prints fully.
      html and body have height/overflow set by Tailwind base styles;
@@ -225,9 +256,20 @@ body {
     display: none !important;
   }
 
-  /* #root > div: the outermost content wrapper (flex flex-col h-screen overflow-hidden)
-     This is the direct clip culprit — height:100vh + overflow:hidden stays in force
-     unless explicitly overridden because CSS overflow does not inherit. */
+  /* Semantic layout wrappers — un-clip so multi-page content prints fully.
+     .app-shell is the outermost wrapper (flex flex-col h-screen overflow-hidden).
+     .split-workspace is the main split-pane container. */
+  .app-shell, .split-workspace {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+  }
+
+  /* Fallback for older builds without .app-shell: target #root > div directly */
   #root > div {
     height: auto !important;
     min-height: 0 !important;
@@ -238,7 +280,7 @@ body {
     flex: none !important;
   }
 
-  /* Main layout container: was flex-col h-screen overflow-hidden */
+  /* Main layout container */
   main {
     display: block !important;
     overflow: visible !important;
@@ -249,13 +291,32 @@ body {
     flex: none !important;
   }
 
-  /* Hide the editor pane (first child of main) — covers both mobile overlay and desktop half */
+  /* Hide editor in print — covers both mobile overlay and desktop half */
+  .editor-pane, .export-button, .share-button, .toolbar {
+    display: none !important;
+  }
+
+  /* Fallback: hide the editor pane (first child of main) */
   main > div:first-child {
     display: none !important;
   }
 
-  /* The preview pane wrapper div (second child of main):
-     was flex flex-col md:w-1/2 bg-slate-50 min-h-0 */
+  /* Preview fills full width in print */
+  .preview-pane {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    flex: none !important;
+  }
+
+  /* Fallback: the preview pane wrapper div (second child of main) */
   main > div:last-child {
     display: block !important;
     width: 100% !important;
@@ -276,7 +337,21 @@ body {
     display: none !important;
   }
 
-  /* The inner scroll wrapper: was flex-1 overflow-auto bg-white p-4 md:p-6 min-h-0 */
+  /* The inner scroll wrapper */
+  .preview-container, .preview-content {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex: none !important;
+  }
+
+  /* Fallback for inner scroll wrapper */
   main > div:last-child > div:last-child {
     display: block !important;
     overflow: visible !important;

@@ -7,7 +7,7 @@ import ExportButton from './components/ExportButton';
 import ShareButton from './components/ShareButton';
 import SharedView from './components/SharedView';
 import WebViewBanner from './components/WebViewBanner';
-import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard, Trash2, SpellCheck } from 'lucide-react';
+import { Type, Code, Eye, Github, ChevronLeft, Check, Clipboard, Trash2, SpellCheck } from 'lucide-react';
 
 const DEFAULT_MARKDOWN = '# Hello Markdown\n\nEdit me to see live preview!\n\n$$x^2 + y^2 = z^2$$';
 
@@ -239,7 +239,7 @@ function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-white font-sans text-slate-900 overflow-hidden relative">
+    <div className="app-shell flex flex-col h-screen bg-white font-sans text-slate-900 overflow-hidden relative">
       <WebViewBanner />
       {/* Header */}
       <header className="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-white z-10 shrink-0">
@@ -260,36 +260,41 @@ function App() {
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Document title…"
-          className="hidden md:block border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 w-48"
+          className="hidden md:block border border-gray-300 rounded-md px-3 py-1 text-sm font-semibold text-gray-800 bg-white max-w-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:font-normal placeholder:text-gray-400"
         />
 
-        {/* Landscape/Portrait toggle */}
-        <button
-          onClick={() => setLandscape(prev => !prev)}
-          title={landscape ? 'Switch to Portrait' : 'Switch to Landscape'}
-          className="hidden md:flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
-        >
-          {landscape ? (
-            <><FileText className="w-4 h-4 rotate-90" /><span>Landscape</span></>
-          ) : (
-            <><FileText className="w-4 h-4" /><span>Portrait</span></>
-          )}
-        </button>
+        {/* Landscape/Portrait pill toggle */}
+        <div className="hidden md:flex orientation-toggle" role="group" aria-label="Page orientation">
+          <button
+            className={`orientation-option${!landscape ? ' active' : ''}`}
+            onClick={() => setLandscape(false)}
+            aria-pressed={!landscape}
+          >
+            📄 Portrait
+          </button>
+          <button
+            className={`orientation-option${landscape ? ' active' : ''}`}
+            onClick={() => setLandscape(true)}
+            aria-pressed={landscape}
+          >
+            🖥 Landscape
+          </button>
+        </div>
 
         {/* Spellcheck toggle */}
         <button
           onClick={() => setSpellcheckEnabled(prev => !prev)}
           title={spellcheckEnabled ? 'Disable spellcheck' : 'Enable spellcheck'}
-          className={`hidden md:flex items-center gap-1.5 text-sm font-medium border rounded-lg px-3 py-1.5 transition-colors ${spellcheckEnabled ? 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+          className={`hidden md:flex items-center gap-1.5 text-sm font-medium border rounded-lg px-3 py-1.5 h-9 transition-colors ${spellcheckEnabled ? 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
         >
           <SpellCheck className="w-4 h-4" />
           <span>Spellcheck</span>
         </button>
         
-        <div className="flex justify-end items-center gap-2 md:gap-4">
+        <div className="flex justify-end items-center gap-2 md:gap-3">
           <button
             onClick={handleClearDocument}
-            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-2 rounded-xl hover:bg-red-50"
+            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-1.5 h-9 rounded-xl hover:bg-red-50"
             title="Clear Document"
           >
             <Trash2 className="w-4 h-4 md:w-4 md:h-4" />
@@ -301,7 +306,7 @@ function App() {
             href="https://github.com/Shivam007kumar/markdown_to_pdf"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden md:flex items-center gap-2 text-sm font-semibold text-slate-700 bg-white/40 backdrop-blur-2xl saturate-[150%] border-t border-l border-white/70 border-b border-r border-white/40 hover:bg-white/60 px-5 py-2.5 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all group hover:scale-105"
+            className="hidden md:flex items-center gap-2 text-sm font-semibold text-slate-700 border border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 px-3 py-1.5 h-9 rounded-lg transition-all"
             title="Star us on GitHub!"
           >
             <Github className="w-4 h-4" />
@@ -313,13 +318,13 @@ function App() {
       </header>
 
       {/* Main Content: Flex column on mobile, row on tablet/desktop */}
-      <main className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0 relative">
+      <main className="split-workspace flex flex-col md:flex-row flex-1 overflow-hidden min-h-0 relative">
         
         {/* Editor Panel 
             Mobile: Show only if activeMobileView is 'editor' or 'css'
             Desktop (md+): Always show taking half width (w-1/2)
         */}
-        <div className={`
+        <div className={`editor-pane
           md:w-1/2 md:flex flex-col border-r border-slate-200 min-h-0 bg-white
           ${(activeMobileView === 'editor' || activeMobileView === 'css') ? 'flex flex-1 absolute inset-0 z-20 md:static' : 'hidden md:flex'}
         `}>
@@ -383,7 +388,7 @@ function App() {
             Mobile: Show only if activeMobileView is 'preview'
             Desktop (md+): Always show taking half width
         */}
-        <div className={`
+        <div className={`preview-pane
           md:w-1/2 bg-slate-50 min-h-0
           ${activeMobileView === 'preview' ? 'flex flex-col flex-1 relative' : 'hidden md:flex flex-col'}
         `}>

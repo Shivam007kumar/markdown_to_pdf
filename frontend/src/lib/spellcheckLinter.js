@@ -67,3 +67,18 @@ export async function runSpellcheck(text) {
     };
   });
 }
+
+/**
+ * Dispose the WorkerLinter instance and terminate its underlying worker.
+ * Safe to call even if the linter was never initialized.
+ */
+export async function disposeSpellcheckLinter() {
+  if (_linter) {
+    try {
+      await _linter.dispose();
+    } catch (_) {
+      // Ignore errors during disposal
+    }
+    _linter = null;
+  }
+}

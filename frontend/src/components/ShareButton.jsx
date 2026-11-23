@@ -93,12 +93,12 @@ function ShareButton({ title, markdown, customCss }) {
 
   return (
     <>
-      <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1">
         <button
           onClick={handleShare}
           disabled={status === 'loading'}
           title="Share this document"
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow active:scale-95 text-sm ${
+          className={`share-button flex items-center gap-2 px-3 py-1.5 h-9 rounded-lg font-semibold transition-all shadow active:scale-95 text-sm ${
             status === 'loading'
               ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
               : 'bg-blue-600 text-white hover:bg-blue-700'

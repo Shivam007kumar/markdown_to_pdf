@@ -254,6 +254,31 @@ console.log('\n--- Check: Fixture 11 --- render timing ---');
 }
 
 // ---------------------------------------------------------------------------
+// Fixture 11: placeholder collision regression checks
+// ---------------------------------------------------------------------------
+console.log('\n--- Check: Fixture 11 --- placeholder collision regression ---');
+{
+  const html = renderedMap['11-large-chatgpt-paste-70kb.md'] || '';
+
+  // 1. At least 15 KaTeX-rendered math expressions (fixture 11 is a 67KB ML paper)
+  const katexSpans = (html.match(/class="katex"/g) || []).length;
+  assert(katexSpans >= 15, `At least 15 KaTeX spans in fixture 11 (got ${katexSpans})`);
+
+  // 2. No stray "4 for batch size" text node — sign of MATH_1 colliding with MATH_14
+  assert(!html.includes('4 for batch size'), 'No stray "4 for batch size" text in fixture 11 output');
+
+  // 3. No collision remnants
+  assert(!/T_total\]4/.test(html), 'No "T_total]4" collision artifact in fixture 11');
+  assert(!/_total\]4/.test(html), 'No "_total]4" collision artifact in fixture 11');
+
+  // 4. The FLOPs/Bytes expression renders near its katex output — confirm .katex appears
+  //    near the text "FLOPs" and "Bytes" (from $I = \frac{\text{FLOPs}}{\text{Bytes}}$)
+  const flopsBytesRegion = html.match(/FLOPs[\s\S]{0,500}?Bytes/);
+  const hasKatexNearFlopBytes = flopsBytesRegion && flopsBytesRegion[0].includes('katex');
+  assert(hasKatexNearFlopBytes, 'A .katex span appears near "FLOPs" and "Bytes" in fixture 11');
+}
+
+// ---------------------------------------------------------------------------
 // Summary
 // ---------------------------------------------------------------------------
 console.log(`\n${'='.repeat(50)}`);
