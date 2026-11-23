@@ -31,7 +31,7 @@ function App() {
           const content = inner.slice(1, inner.lastIndexOf('\\\\'));
           return `\\(${content}\\)`;
         })
-        .replace(/\\\\(\[[\s\S]*?\\\\[]])/g, (_, inner) => {
+        .replace(/\\\\(\[[\s\S]*?\\\\\])/g, (_, inner) => {
           const content = inner.slice(1, inner.lastIndexOf('\\\\'));
           return `\\[${content}\\]`;
         })

@@ -241,7 +241,7 @@ function checkDoubleEscapedMath(maskedText, originalText, maskStore, maskOffsets
             // Replace ALL double-escaped delimiters in the document
             const docText = view.state.doc.toString();
             const changes = [];
-            const globalRe = /\\\\(\([\s\S]*?\\\\[)]|(?:\[)[\s\S]*?\\\\[]])/g;
+            const globalRe = /\\\\(\([\s\S]*?\\\\[)]|(?:\[)[\s\S]*?\\\\\])/g;
             let gm;
             while ((gm = globalRe.exec(docText)) !== null) {
               const isRoundInner = gm[1].startsWith('(');
