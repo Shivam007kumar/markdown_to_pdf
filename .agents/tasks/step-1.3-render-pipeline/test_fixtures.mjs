@@ -143,6 +143,17 @@ console.log('\n--- Check: Fixture 02 --- no katex on $HADOOP_HOME, $5, $10 ---')
 
   // The actual math $\Delta E = mc^2$ SHOULD produce katex output
   assert(html.includes('katex'), 'Actual math $\\Delta E = mc^2$ IS rendered by KaTeX');
+
+  // Fenced code blocks must still be rendered (language- class present)
+  assert(html.includes('class="language-'), 'Fenced code blocks still rendered with language- class');
+
+  // Inline code tokens like $PATH and $HOME must appear inside <code> tags
+  // (they come from backtick inline code spans like `$PATH:$HOME/.local/bin`)
+  const inlineCodeTags = html.match(/<code[^>]*>[\s\S]*?<\/code>/g) || [];
+  const hasPathInCode = inlineCodeTags.some(t => t.includes('$PATH') || t.includes('PATH'));
+  assert(hasPathInCode, 'Inline code token $PATH appears inside <code> tags');
+  const hasHomeInCode = inlineCodeTags.some(t => t.includes('$HOME') || t.includes('HOME'));
+  assert(hasHomeInCode, 'Inline code token $HOME appears inside <code> tags');
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +207,22 @@ console.log('\n--- Check: Fixture 08 --- no external render service URLs ---');
   }
   // Should have offline-diagram fallback blocks for plantuml and graphviz
   assert(html.includes('offline-diagram'), 'Offline diagram note present for plantuml/graphviz');
+
+  // Fix 3b: offline-diagram-note must be OUTSIDE the <pre> block
+  assert(html.includes('class="offline-diagram-note"'), 'offline-diagram-note class present in fixture 08');
+
+  // The note text must not appear inside a <pre> or <code> element
+  // We check by ensuring the note text does not follow a <pre or <code opening tag without
+  // an intervening closing tag first. Simple heuristic: strip all pre/code content and check.
+  const stripped = html.replace(/<pre[\s\S]*?<\/pre>/gi, '').replace(/<code[\s\S]*?<\/code>/gi, '');
+  assert(
+    /Offline preview not available for/.test(stripped),
+    'Offline note text appears outside <pre>/<code> in fixture 08'
+  );
+  // Confirm the note text is NOT present inside a pre block
+  const preBlocks = html.match(/<pre[\s\S]*?<\/pre>/gi) || [];
+  const noteInPre = preBlocks.some(b => b.includes('Offline preview not available for'));
+  assert(!noteInPre, 'Offline note text NOT inside a <pre> block in fixture 08');
 }
 
 // ---------------------------------------------------------------------------

@@ -61,8 +61,10 @@ function handleOfflineDiagrams(text) {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
     return (
-      `<pre class="offline-diagram-block"><code class="language-${lang}">${escaped}</code>` +
-      `\n<span class="offline-diagram-note">Offline preview not available for ${lang}</span></pre>`
+      `<div class="offline-diagram">` +
+      `<p class="offline-diagram-note">Offline preview not available for ${lang}</p>` +
+      `<pre><code class="language-${lang}">${escaped}</code></pre>` +
+      `</div>`
     );
   });
 }
@@ -372,7 +374,13 @@ export async function renderMermaidDiagrams(containerEl, renderId, getRenderId) 
     securityLevel: 'strict',
     suppressErrors: true,
     theme: 'default',
+    flowchart: { padding: 16 },
   });
+
+  // Wait for fonts to load so Mermaid measures text correctly
+  if (document.fonts?.ready) {
+    await document.fonts.ready;
+  }
 
   for (const container of containers) {
     // Abort if a newer render has started

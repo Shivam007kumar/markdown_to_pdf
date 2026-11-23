@@ -50,17 +50,31 @@ body {
   color: #d4d4d4;
   padding: 1rem;
   border-radius: 0.5rem;
-  overflow-x: auto;
+  overflow-x: hidden;
   font-family: 'Fira Code', monospace;
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
-.preview-container code:not(pre code) {
+.preview-container pre code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+/* Inline code pill — only for code NOT inside a pre block */
+.preview-container :not(pre) > code {
   background: #f1f5f9;
-  padding: 0.2rem 0.4rem;
-  border-radius: 0.25rem;
+  color: #0f172a;
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-size: 0.88em;
   font-family: 'Fira Code', monospace;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .preview-container blockquote {
@@ -167,6 +181,19 @@ body {
 .preview-container .mermaid-container svg {
   max-width: 100%;
   height: auto;
+}
+
+/* Offline diagram fallback */
+.offline-diagram {
+  margin: 1em 0;
+}
+
+.offline-diagram-note {
+  font-size: 0.8em;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0 0 4px 0;
+  padding: 0;
 }
 
 @media print {
@@ -286,6 +313,20 @@ body {
   }
 
   /* Pagination rules */
+  .preview-container pre {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-all !important;
+    overflow-x: visible !important;
+    max-width: 100% !important;
+  }
+
+  .preview-container pre code {
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-all !important;
+  }
+
   pre, blockquote, .katex-display, .mermaid-container, .math-error, .diagram-error, tr, img {
     break-inside: avoid;
   }
