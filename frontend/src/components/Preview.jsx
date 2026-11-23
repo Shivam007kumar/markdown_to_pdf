@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { renderDocument, renderMermaidDiagrams } from '../lib/renderDocument';
 
-function Preview({ markdown, customCss }) {
+function Preview({ markdown, customCss, onRenderingChange }) {
   const [html, setHtml] = useState('');
   const containerRef = useRef(null);
   const renderIdRef = useRef(0);
@@ -31,11 +31,20 @@ function Preview({ markdown, customCss }) {
         requestAnimationFrame(() => {
           if (renderIdRef.current !== currentId) return;
           if (containerRef.current) {
-            renderMermaidDiagrams(
-              containerRef.current,
-              currentId,
-              () => renderIdRef.current
-            );
+            onRenderingChange?.(true);
+            (async () => {
+              try {
+                await renderMermaidDiagrams(
+                  containerRef.current,
+                  currentId,
+                  () => renderIdRef.current
+                );
+              } finally {
+                if (renderIdRef.current === currentId) {
+                  onRenderingChange?.(false);
+                }
+              }
+            })();
           }
         });
       } catch (err) {

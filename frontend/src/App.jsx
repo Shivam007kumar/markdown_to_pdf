@@ -4,6 +4,7 @@ import Editor from './components/Editor';
 import Preview from './components/Preview';
 import CSSEditor from './components/CSSEditor';
 import ExportButton from './components/ExportButton';
+import WebViewBanner from './components/WebViewBanner';
 import { Type, Code, Eye, FileText, Github, ChevronLeft, Check, Clipboard, Trash2 } from 'lucide-react';
 
 const DEFAULT_MARKDOWN = '# Hello Markdown\n\nEdit me to see live preview!\n\n$$x^2 + y^2 = z^2$$';
@@ -15,6 +16,9 @@ function App() {
   const [imageMap, setImageMap] = useState({});
   const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved
   const [isInitialized, setIsInitialized] = useState(false);
+  const [title, setTitle] = useState('');
+  const [landscape, setLandscape] = useState(false);
+  const [isMermaidRendering, setIsMermaidRendering] = useState(false);
   
   // Mobile states
   const [activeMobileView, setActiveMobileView] = useState('preview'); // 'preview', 'editor', 'css'
@@ -32,6 +36,8 @@ function App() {
       }
       setIsInitialized(true);
     });
+    localforage.getItem('md2pdf-title').then(v => { if (v) setTitle(v); });
+    localforage.getItem('md2pdf-landscape').then(v => { if (v !== null) setLandscape(!!v); });
   }, []);
 
   // Save to draft whenever content changes
@@ -58,6 +64,17 @@ function App() {
     
     return () => clearTimeout(timer);
   }, [markdown, customCss, imageMap, isInitialized, hasUserContent]);
+
+  // Auto-save title
+  useEffect(() => {
+    const t = setTimeout(() => localforage.setItem('md2pdf-title', title), 300);
+    return () => clearTimeout(t);
+  }, [title]);
+
+  // Auto-save landscape
+  useEffect(() => {
+    localforage.setItem('md2pdf-landscape', landscape);
+  }, [landscape]);
 
   useEffect(() => {
     if (hasUserContent && !hasShownTooltip) {
@@ -124,6 +141,7 @@ function App() {
   if (!hasUserContent) {
     return (
       <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900 items-center justify-center p-6 sm:p-8">
+        <WebViewBanner />
         <div className="max-w-md w-full flex flex-col items-center gap-6">
           <div className="w-20 h-20 flex items-center justify-center rounded-2xl bg-white p-3 shadow-md border border-slate-200">
             {/* The white logo looks better on a dark bg, but keeping docs_white with black tint or use docs.png */}
@@ -171,6 +189,7 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen bg-white font-sans text-slate-900 overflow-hidden relative">
+      <WebViewBanner />
       {/* Header */}
       <header className="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-white z-10 shrink-0">
         <div className="flex items-center gap-2 md:gap-3">
@@ -183,6 +202,28 @@ function App() {
             {saveStatus === 'saved' && <span className="text-[10px] md:text-[11px] text-emerald-500 font-medium mt-0.5">All changes saved locally</span>}
           </div>
         </div>
+
+        {/* Title input */}
+        <input
+          type="text"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          placeholder="Document title…"
+          className="hidden md:block border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 w-48"
+        />
+
+        {/* Landscape/Portrait toggle */}
+        <button
+          onClick={() => setLandscape(prev => !prev)}
+          title={landscape ? 'Switch to Portrait' : 'Switch to Landscape'}
+          className="hidden md:flex items-center gap-1.5 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50 transition-colors"
+        >
+          {landscape ? (
+            <><FileText className="w-4 h-4 rotate-90" /><span>Landscape</span></>
+          ) : (
+            <><FileText className="w-4 h-4" /><span>Portrait</span></>
+          )}
+        </button>
         
         <div className="flex justify-end items-center gap-2 md:gap-4">
           <button
@@ -205,7 +246,7 @@ function App() {
             <Github className="w-4 h-4" />
             <span className="hidden lg:inline">Star on GitHub</span>
           </a>
-          <ExportButton markdown={resolvedMarkdownForExport} customCss={customCss} />
+          <ExportButton title={title} landscape={landscape} isPrinting={isMermaidRendering} />
         </div>
       </header>
 
@@ -272,7 +313,7 @@ function App() {
           ${activeMobileView === 'preview' ? 'flex flex-col flex-1 relative' : 'hidden md:flex flex-col'}
         `}>
           {/* Top Bar on Mobile for Edit Button */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-slate-50 shrink-0">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-slate-200 bg-slate-50 shrink-0" data-print-hide="true">
             <div className="flex items-center gap-2 text-sm font-medium text-slate-500">
               <Eye className="w-4 h-4" />
               Live Preview
@@ -287,7 +328,7 @@ function App() {
           </div>
           
           <div className="flex-1 overflow-auto bg-white p-4 md:p-6 min-h-0">
-            <Preview markdown={debouncedMarkdown} customCss={customCss} />
+            <Preview markdown={debouncedMarkdown} customCss={customCss} onRenderingChange={setIsMermaidRendering} />
           </div>
         </div>
       </main>

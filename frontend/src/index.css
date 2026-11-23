@@ -46,12 +46,14 @@ body {
 .preview-container p { margin: 1em 0; }
 
 .preview-container pre {
-  background: #2d2d2d;
-  color: #f8f8f2;
+  background: #1e1e1e;
+  color: #d4d4d4;
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
   font-family: 'Fira Code', monospace;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 .preview-container code:not(pre code) {
@@ -83,6 +85,8 @@ body {
 
 .preview-container tr:nth-child(even) {
   background-color: #f8fafc;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 
 /* List Indentation Fixes */
@@ -117,9 +121,129 @@ body {
   padding: 0.5em 0;
   overflow-x: auto;
   overflow-y: hidden;
+  text-align: center;
 }
 
 .preview-container .katex {
   font-size: 1.05em;
   padding: 0 0.1em;
+}
+
+/* Math error fallback box */
+.preview-container .math-error {
+  display: inline-block;
+  border: 1px solid #ef4444;
+  background: #fef2f2;
+  color: #dc2626;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.875em;
+  padding: 0.2em 0.5em;
+  border-radius: 4px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Diagram error fallback box */
+.preview-container .diagram-error {
+  border: 1px solid #f97316;
+  background: #fff7ed;
+  color: #c2410c;
+  padding: 0.75em 1em;
+  border-radius: 6px;
+  font-size: 0.875em;
+  margin: 1em 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Mermaid SVG max-width */
+.preview-container .mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+@media print {
+  /* CRITICAL: un-clip the document so multi-page content prints fully */
+  html, body, #root {
+    height: auto !important;
+    min-height: unset !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Hide all app chrome */
+  header,
+  .webview-banner,
+  [data-print-hide="true"],
+  nav,
+  aside,
+  .fixed {
+    display: none !important;
+  }
+
+  /* Show only the preview content */
+  main {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Hide the editor pane (first child of main) */
+  main > div:first-child {
+    display: none !important;
+  }
+
+  /* The preview pane div (second child of main) */
+  main > div:last-child {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* Hide the Live Preview toolbar bar inside the preview pane */
+  main > div:last-child > div:first-child {
+    display: none !important;
+  }
+
+  /* Show the scrollable content wrapper */
+  main > div:last-child > div:last-child {
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  /* Preview container itself */
+  .preview-container {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+  }
+
+  /* Pagination rules */
+  pre, blockquote, .katex-display, .mermaid-container, .math-error, .diagram-error, tr, img {
+    break-inside: avoid;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+  }
+
+  /* NOTE: intentionally NOT adding break-inside: avoid on table, ul, or ol */
+}
+
+@page {
+  size: A4 portrait;
+  margin: 20mm;
 }

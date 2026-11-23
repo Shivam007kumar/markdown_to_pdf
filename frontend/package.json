@@ -13,7 +13,6 @@
     "@fontsource/barlow": "^5.3.0",
     "@fontsource/fira-code": "^5.3.0",
     "@uiw/react-codemirror": "^4.23.0",
-    "axios": "^1.7.7",
     "clsx": "^2.1.1",
     "dompurify": "^3.5.0",
     "katex": "^0.19.1",
@@ -24,11 +23,6 @@
     "pako": "^2.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-markdown": "^9.0.1",
-    "rehype-katex": "^7.0.0",
-    "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.0",
-    "remark-math": "^6.0.0",
     "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {
