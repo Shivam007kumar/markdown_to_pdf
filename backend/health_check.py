@@ -7,10 +7,20 @@ import datetime
 import argparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from dotenv import load_dotenv
 
-# Load environment variables from .env in the same directory
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+# Load .env — use python3-dotenv if available, otherwise parse manually
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+except ImportError:
+    _env_path = os.path.join(os.path.dirname(__file__), '.env')
+    if os.path.exists(_env_path):
+        with open(_env_path) as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith('#') and '=' in _line:
+                    _k, _, _v = _line.partition('=')
+                    os.environ.setdefault(_k.strip(), _v.strip())
 
 API_URL = "http://127.0.0.1:8000"
 

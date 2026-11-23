@@ -85,6 +85,8 @@ jobs:
             git reset --hard origin/main
 
             # Build backend on EC2 (Rust compile needs ~1 GB; swap file must be active)
+            # Non-interactive SSH does not source ~/.cargo/env, so set PATH explicitly
+            export PATH="$HOME/.cargo/bin:$PATH"
             cd backend
             cargo build --release
 
