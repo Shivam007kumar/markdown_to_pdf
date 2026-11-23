@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --maxmemory 256mb --maxmemory-policy volatile-ttl --appendonly yes
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    depends_on:
+      - redis
+    env_file:
+      - ./backend/.env
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped

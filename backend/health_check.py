@@ -5,190 +5,241 @@ import json
 import urllib.request
 import datetime
 import argparse
-import argparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env in the same directory
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
-# Configuration
-API_URL = "http://127.0.0.1:8000" # Test locally through the proxy on EC2, or directly to uvicorn
-EMAIL_SENDER = os.getenv("gmail_id")
-EMAIL_PASSWORD = os.getenv("gmail_pw")
-EMAIL_RECEIVER = os.getenv("alert_reciver_mail_id")
+API_URL = "http://127.0.0.1:8000"
 
-def send_alert(subject, body, pdf_bytes=None):
+# Support both new and old env var names, new takes priority
+EMAIL_SENDER = os.getenv("ALERT_EMAIL") or os.getenv("gmail_id")
+EMAIL_PASSWORD = os.getenv("ALERT_EMAIL_PASSWORD") or os.getenv("gmail_pw")
+EMAIL_RECEIVER = os.getenv("ALERT_RECEIVER_EMAIL") or os.getenv("alert_reciver_mail_id")
+
+
+def send_alert(subject, body):
     if not EMAIL_SENDER or not EMAIL_PASSWORD:
-        print(f"Skipping email alert (credentials not configured in .env): {subject}")
+        print(f"Skipping email alert (credentials not configured): {subject}")
         print("--- Email Body ---")
         print(body)
         print("------------------")
         return
-        
+
     try:
         msg = MIMEMultipart()
         msg['From'] = EMAIL_SENDER
         msg['To'] = EMAIL_RECEIVER
-        msg['Subject'] = f"🚨 MD2PDF Alert: {subject}"
-        
+        msg['Subject'] = f"MD2PDF Alert: {subject}"
+
         msg.attach(MIMEText(body, 'plain'))
-        
-        if pdf_bytes:
-            pdf_attachment = MIMEApplication(pdf_bytes, _subtype="pdf")
-            pdf_attachment.add_header('Content-Disposition', 'attachment', filename='MD2PDF_Health_Report.pdf')
-            msg.attach(pdf_attachment)
-        
+
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.send_message(msg)
         server.quit()
-        print(f"Alert email sent successfully: {subject}")
+        print(f"Alert email sent: {subject}")
     except Exception as e:
         print(f"Failed to send alert email: {e}")
 
-def run_health_check(is_weekly=False):
+
+def check_health_endpoint():
+    """GET /health → assert HTTP 200 and JSON body contains "redis": "ok"."""
     errors = []
-    
-    # 1. Test basic liveness
     try:
         req = urllib.request.Request(f"{API_URL}/health")
         with urllib.request.urlopen(req, timeout=10) as response:
             if response.status != 200:
                 errors.append(f"/health returned status {response.status}")
+                return errors
+            body = json.loads(response.read().decode('utf-8'))
+            if body.get("redis") != "ok":
+                errors.append(f"/health redis status not ok: {body}")
     except Exception as e:
         errors.append(f"Failed to connect to /health: {e}")
-        
-    # 2. Test actual PDF Generation functionality (Full end-to-end test)
+    return errors
+
+
+def check_share_roundtrip():
+    """POST /share then GET /share/{id} and verify title and markdown match."""
+    errors = []
+    test_title = "Health Check Title"
+    test_markdown = "# Health Check\n\nRound-trip test at " + datetime.datetime.now().isoformat()
     try:
         payload = json.dumps({
-            "markdown": "# Health Check\nIf you can read this, the system is alive.",
-            "custom_css": ""
+            "title": test_title,
+            "markdown": test_markdown
         }).encode('utf-8')
-        
-        req = urllib.request.Request(f"{API_URL}/export", data=payload, headers={'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=30) as response:
+        req = urllib.request.Request(
+            f"{API_URL}/share",
+            data=payload,
+            headers={'Content-Type': 'application/json'},
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=10) as response:
             if response.status != 200:
-                errors.append(f"/export returned status {response.status}")
-            else:
-                resp_data = json.loads(response.read().decode('utf-8'))
-                if "url" not in resp_data:
-                    errors.append(f"/export returned successful status but no 'url' in response: {resp_data}")
+                errors.append(f"POST /share returned status {response.status}")
+                return errors
+            share_data = json.loads(response.read().decode('utf-8'))
+            share_id = share_data.get("id")
+            if not share_id:
+                errors.append(f"POST /share returned no id: {share_data}")
+                return errors
     except Exception as e:
-        errors.append(f"Failed end-to-end PDF export test: {e}")
-        
-    # 3. Check systemd logs
+        errors.append(f"Failed POST /share: {e}")
+        return errors
+
     try:
-        time_frame = '7 days ago' if is_weekly else '24 hours ago'
-        # Fetch logs for the md2pdf-api service
-        log_process = subprocess.run(
-            ['journalctl', '-u', 'md2pdf-api', '--since', time_frame, '--no-pager'],
+        req = urllib.request.Request(f"{API_URL}/share/{share_id}")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            if response.status != 200:
+                errors.append(f"GET /share/{share_id} returned status {response.status}")
+                return errors
+            retrieved = json.loads(response.read().decode('utf-8'))
+            if retrieved.get("title") != test_title:
+                errors.append(
+                    f"Round-trip title mismatch: expected {test_title!r}, got {retrieved.get('title')!r}"
+                )
+            if retrieved.get("markdown") != test_markdown:
+                errors.append(
+                    f"Round-trip markdown mismatch: expected {test_markdown!r}, got {retrieved.get('markdown')!r}"
+                )
+    except Exception as e:
+        errors.append(f"Failed GET /share/{share_id}: {e}")
+    return errors
+
+
+def check_logs(is_weekly=False):
+    """Scan journalctl for panic/ERROR lines; return (errors_list, log_errors_list)."""
+    errors = []
+    log_errors = []
+    since = '7 days ago' if is_weekly else '24 hours ago'
+    try:
+        result = subprocess.run(
+            ['journalctl', '-u', 'md2pdf-api', '--since', since, '--no-pager'],
             capture_output=True,
             text=True
         )
-        logs = log_process.stdout
-        
-        # Look for critical keywords
-        log_errors = []
-        for line in logs.splitlines():
-            line_lower = line.lower()
-            if 'error' in line_lower or 'exception' in line_lower or 'traceback' in line_lower:
-                # Filter out false positives
-                if "httpx" in line_lower and "info" in line_lower:
-                    continue
-                if "weasyprint" in line_lower and "failed to load image" in line_lower:
-                    continue
-                if "weasyprint" in line_lower and "ignored" in line_lower:
-                    continue
-                if "weasyprint" in line_lower and "no anchor" in line_lower:
-                    continue
-                if "no entries" in line_lower:
+        for line in result.stdout.splitlines():
+            if any(kw in line for kw in ('panic', 'PANIC', 'ERROR', 'error')):
+                if 'no entries' in line.lower():
                     continue
                 log_errors.append(line)
-                
         if log_errors:
-            # We only send the last 10 errors to avoid huge emails
-            error_preview = "\n".join(log_errors[-10:])
-            errors.append(f"Found {len(log_errors)} error(s) in systemd logs (last {time_frame}). Preview of last 10:\n{error_preview}")
+            preview = "\n".join(log_errors[-10:])
+            errors.append(
+                f"Found {len(log_errors)} error line(s) in journalctl (since {since}). Last 10:\n{preview}"
+            )
     except Exception as e:
-        errors.append(f"Failed to scan systemd logs: {e}")
-        
-    # Generate the comprehensive PDF test if weekly
-    pdf_bytes = None
+        errors.append(f"Failed to scan journalctl: {e}")
+    return errors, log_errors
+
+
+def check_disk():
+    """Assert disk used% < 85%."""
+    errors = []
+    disk_info = ""
+    try:
+        result = subprocess.run(['df', '-h', '/'], capture_output=True, text=True)
+        disk_info = result.stdout.strip()
+        # Parse the Use% column from the second line
+        lines = disk_info.splitlines()
+        if len(lines) >= 2:
+            parts = lines[1].split()
+            use_pct_str = parts[4].rstrip('%')
+            use_pct = int(use_pct_str)
+            if use_pct >= 85:
+                errors.append(f"Disk usage is at {use_pct}% (threshold: 85%)\n{disk_info}")
+    except Exception as e:
+        errors.append(f"Failed to check disk usage: {e}")
+    return errors, disk_info
+
+
+def check_memory():
+    """Read /proc/meminfo and return a summary string."""
+    summary = ""
+    try:
+        with open('/proc/meminfo', 'r') as f:
+            meminfo = f.read()
+        values = {}
+        for line in meminfo.splitlines():
+            parts = line.split()
+            if parts[0].rstrip(':') in ('MemAvailable', 'SwapTotal', 'SwapFree'):
+                values[parts[0].rstrip(':')] = int(parts[1])  # kB
+        mem_avail_mb = values.get('MemAvailable', 0) // 1024
+        swap_total_mb = values.get('SwapTotal', 0) // 1024
+        swap_free_mb = values.get('SwapFree', 0) // 1024
+        summary = f"RAM available: {mem_avail_mb} MB | Swap: {swap_free_mb}/{swap_total_mb} MB free"
+    except Exception as e:
+        summary = f"Could not read /proc/meminfo: {e}"
+    return summary
+
+
+def run_health_check(is_weekly=False):
+    errors = []
+
+    health_errors = check_health_endpoint()
+    errors.extend(health_errors)
+
+    share_errors = check_share_roundtrip()
+    share_ok = len(share_errors) == 0
+    errors.extend(share_errors)
+
+    log_errors_list, raw_log_errors = check_logs(is_weekly)
+    errors.extend(log_errors_list)
+
+    disk_errors, disk_info = check_disk()
+    errors.extend(disk_errors)
+
+    mem_summary = check_memory()
+
     if is_weekly:
         try:
-            now_str = datetime.datetime.now().isoformat()
-            log_section = f"### System Logs (Last {time_frame})\n\n```text\n{error_preview}\n```" if log_errors else f"### System Logs (Last {time_frame})\n\n✅ System is 100% Healthy! No errors found."
-            
-            md_content = f"""# MD2PDF Weekly Health Report
+            uptime_result = subprocess.run(['uptime', '-p'], capture_output=True, text=True)
+            uptime_str = uptime_result.stdout.strip()
+        except Exception:
+            uptime_str = "unavailable"
 
-**Date:** {now_str}
+        log_status = (
+            f"No errors found in the last 7 days."
+            if not raw_log_errors
+            else f"{len(raw_log_errors)} error line(s) found in the last 7 days."
+        )
 
-## E2E Functionality Verification
-
-This PDF was generated by the backend itself, proving that all integrations are perfectly healthy!
-
-### 1. Math Rendering Verification (CodeCogs)
-Einstein's famous equation: $E = mc^2$
-
-Block Math:
-$$
-\\int_0^\\infty e^{{-x^2}} dx = \\frac{{\\sqrt{{\\pi}}}}{{2}}
-$$
-
-### 2. Diagram Rendering Verification (Kroki / Mermaid)
-```mermaid
-graph TD
-    A[Cron Job] --> B[Test API]
-    B --> C[Generate PDF]
-    C --> D[Email User]
-```
-
-## System Status
-
-{log_section}
-"""
-            payload = json.dumps({
-                "markdown": md_content,
-                "custom_css": ""
-            }).encode('utf-8')
-            
-            req = urllib.request.Request(f"{API_URL}/export", data=payload, headers={'Content-Type': 'application/json'})
-            with urllib.request.urlopen(req, timeout=30) as response:
-                if response.status == 200:
-                    resp_data = json.loads(response.read().decode('utf-8'))
-                    pdf_url = resp_data.get("url")
-                    if pdf_url:
-                        # Download the generated PDF
-                        pdf_req = urllib.request.Request(pdf_url)
-                        with urllib.request.urlopen(pdf_req, timeout=30) as pdf_resp:
-                            pdf_bytes = pdf_resp.read()
-        except Exception as e:
-            errors.append(f"Failed to generate Weekly PDF report: {e}")
-
-    # Send alert
-    if errors:
-        title = "Weekly Health Check Failed" if is_weekly else "System Health Check Failed"
-        body = f"MD2PDF Health Check Failed at {datetime.datetime.now().isoformat()}\n\n"
-        body += "Issues detected:\n"
-        for i, err in enumerate(errors, 1):
-            body += f"{i}. {err}\n\n"
-        
-        send_alert(title, body, pdf_bytes)
+        body = (
+            f"MD2PDF Weekly Status Report\n"
+            f"Generated: {datetime.datetime.now().isoformat()}\n\n"
+            f"Uptime: {uptime_str}\n\n"
+            f"Round-trip share test: {'PASSED' if share_ok else 'FAILED'}\n\n"
+            f"Memory/Disk:\n"
+            f"  {mem_summary}\n"
+            f"  Disk: {disk_info}\n\n"
+            f"Log status: {log_status}\n"
+        )
+        if errors:
+            body += "\nIssues detected:\n"
+            for i, err in enumerate(errors, 1):
+                body += f"{i}. {err}\n"
+            send_alert("Weekly Status Report: Issues Detected", body)
+        else:
+            send_alert("Weekly Status Report: All Clear", body)
     else:
-        if is_weekly:
-            body = f"MD2PDF Weekly Status Report at {datetime.datetime.now().isoformat()}\n\n"
-            body += "✅ System is 100% Healthy! Please find the attached PDF report proving all backend functionality is perfectly intact."
-            send_alert("Weekly Status Report: All Clear", body, pdf_bytes)
+        if errors:
+            body = f"MD2PDF Health Check Failed at {datetime.datetime.now().isoformat()}\n\n"
+            body += "Issues detected:\n"
+            for i, err in enumerate(errors, 1):
+                body += f"{i}. {err}\n\n"
+            send_alert("System Health Check Failed", body)
         else:
             print("Health check passed. No errors found.")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="MD2PDF Health Check")
     parser.add_argument("--weekly", action="store_true", help="Run the weekly summary report")
     args = parser.parse_args()
-    
+
     run_health_check(is_weekly=args.weekly)
