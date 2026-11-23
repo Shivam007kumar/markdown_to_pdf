@@ -7,7 +7,7 @@
  *   1. Extract mermaid fenced blocks (before code masking, they'd get swallowed)
  *   2. Handle non-mermaid diagram blocks → offline pre fallback
  *   3. Mask remaining fenced code blocks and inline code spans (protects $VAR, $PATH)
- *   4. Extract math expressions ($$, \[, $, \(, etc.)
+ *   4. Extract math expressions ($$, \[, $, \(, etc.) — with currency pre-protection
  *   5. Restore code placeholders into text
  *   6. Run markdown-it
  *   7. DOMPurify sanitize (security boundary — before injecting KaTeX/mermaid HTML)
@@ -122,9 +122,19 @@ function extractMath(text) {
   result = result.replace(/\\{1,2}\(([\s\S]*?)\\{1,2}\)/g, (_m, latex) => store(latex, false));
 
   // 4. Inline math: $...$
-  //    Currency heuristic: skip if opening $ is immediately followed by a digit
-  //    AND the closing $ is immediately followed by whitespace, punctuation, or EOS.
-  //    e.g. "$5 and $10" → plain text; "$\Delta E = mc^2$" → math
+  //    Primary currency guard: pre-replace isolated currency amounts like $5, $10, $15.50
+  //    with neutral placeholders so the non-greedy $...$ regex cannot span across them
+  //    on the same line (e.g. "$5, while a full meal costs $10" previously matched the
+  //    entire span as a single math expression).
+  const currencyPlaceholders = [];
+  result = result.replace(/\$(\d+(?:[.,]\d+)*)\b/g, (match) => {
+    const idx = currencyPlaceholders.length;
+    currencyPlaceholders.push(match);
+    return `CURRENCY_${idx}`;
+  });
+
+  //    Secondary heuristic (retained as extra guard): skip $...$ if opening $ is
+  //    immediately followed by a digit AND closing $ is followed by whitespace/punctuation.
   result = result.replace(/\$([^$\n]+?)\$/g, (match, latex, offset, str) => {
     const firstChar = latex[0];
     if (/\d/.test(firstChar)) {
@@ -136,6 +146,11 @@ function extractMath(text) {
     }
     return store(latex, false);
   });
+
+  // Restore currency placeholders (reverse order for safety)
+  for (let i = currencyPlaceholders.length - 1; i >= 0; i--) {
+    result = result.replace(`CURRENCY_${i}`, () => currencyPlaceholders[i]);
+  }
 
   return { result, exprs };
 }
