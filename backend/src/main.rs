@@ -121,28 +121,26 @@ fn regex_replace_html_tags(s: &str) -> String {
 }
 
 /// Remove javascript: URI patterns (case-insensitive).
+/// Uses char-indexed scanning to handle non-ASCII characters safely.
 fn strip_javascript_uri(s: &str) -> String {
-    // Simple case-insensitive replacement
     let lower = s.to_lowercase();
     if !lower.contains("javascript:") {
         return s.to_string();
     }
-    // Walk the string removing javascript: occurrences
+    let char_indices: Vec<(usize, char)> = s.char_indices().collect();
+    let lower_chars: Vec<char> = lower.chars().collect();
+    let target: Vec<char> = "javascript:".chars().collect();
+    let tlen = target.len();
+    let n = char_indices.len();
     let mut result = String::with_capacity(s.len());
     let mut i = 0;
-    let bytes = s.as_bytes();
-    let len = bytes.len();
-    while i < len {
-        // Check if we're at a javascript: prefix (case-insensitive)
-        if i + 11 <= len {
-            let chunk = &s[i..i + 11];
-            if chunk.to_lowercase() == "javascript:" {
-                i += 11;
-                continue;
-            }
+    while i < n {
+        if i + tlen <= n && lower_chars[i..i + tlen] == target[..] {
+            i += tlen; // skip the entire "javascript:" sequence
+        } else {
+            result.push(char_indices[i].1);
+            i += 1;
         }
-        result.push(bytes[i] as char);
-        i += 1;
     }
     result
 }
@@ -848,7 +846,32 @@ mod tests {
         );
     }
 
-    // --- Integration tests (require local Redis) ---
+    #[test]
+    fn test_title_strips_javascript_uri_with_non_ascii() {
+        // F1 regression test: non-ASCII chars before "javascript:" must not panic
+        let title = "André javascript:alert(1) end";
+        let sanitized = sanitize_title(title);
+        assert!(
+            !sanitized.contains("javascript:"),
+            "javascript: stripped from non-ASCII title"
+        );
+        assert!(
+            sanitized.contains("André"),
+            "Non-ASCII text before javascript: preserved"
+        );
+        assert!(
+            sanitized.contains("end"),
+            "Text after javascript: preserved"
+        );
+    }
+
+    #[test]
+    fn test_strip_javascript_uri_non_ascii_no_js() {
+        // Non-ASCII string without javascript: must pass through unchanged
+        let s = "Ünïcödé string with 日本語";
+        assert_eq!(strip_javascript_uri(s), s);
+    }
+
 
     async fn make_test_state() -> Option<AppState> {
         let config = Arc::new(Config {
