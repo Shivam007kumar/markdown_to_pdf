@@ -101,6 +101,118 @@ function maskCodeBlocks(text) {
 // ---------------------------------------------------------------------------
 // Step A5: Extract math expressions
 // ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the content between two $ delimiters looks like math rather
+ * than plain currency. Used when the content starts with a digit.
+ *
+ * Plain currency: only digits, commas, periods — e.g. "5", "10", "15.50", "1,000"
+ * Math: contains any LaTeX syntax character — \, ^, _, {, }, =, +, -, *, /, <, >
+ *       OR contains a letter (e.g. "$50/month" contains 'm' → math)
+ */
+function looksLikeMath(content) {
+  // If content is ONLY digits, commas, and periods → plain currency
+  if (/^[\d,. ]+$/.test(content)) return false;
+  // Contains LaTeX syntax characters or letters → treat as math
+  return /[\\^_{}\=+\-*/<>a-zA-Z]/.test(content);
+}
+
+/**
+ * Left-to-right inline $...$ scanner.
+ *
+ * Rules:
+ *  - Opening $ must not be preceded by \ (escaped dollar)
+ *  - Opening $ must not be followed by a space (space after $ = not math)
+ *  - Content must be on the same line (no newline between delimiters)
+ *  - Closing $ must not be preceded by a space
+ *  - Closing $ must not be immediately followed by a digit (e.g. $10 continuation)
+ *  - If opening $ is immediately followed by a digit, the content must look like
+ *    math (contain \, {, }, ^, _, =, letters, etc.) — otherwise it's currency.
+ */
+function extractInlineDollarMath(text, store) {
+  let result = '';
+  let i = 0;
+  const n = text.length;
+
+  while (i < n) {
+    // Find next unescaped $
+    if (text[i] !== '$') {
+      result += text[i++];
+      continue;
+    }
+
+    // Check for escaped dollar (\$)
+    const prevChar = i > 0 ? text[i - 1] : '';
+    if (prevChar === '\\') {
+      result += text[i++];
+      continue;
+    }
+
+    // Check for display math $$ (already handled before this call, but guard anyway)
+    if (i + 1 < n && text[i + 1] === '$') {
+      result += text[i++]; // let the $$ pass through (already processed)
+      continue;
+    }
+
+    // Opening $ found at position i
+    const openPos = i;
+    const charAfterOpen = i + 1 < n ? text[i + 1] : '';
+
+    // Opening $ followed by space → not math
+    if (charAfterOpen === ' ' || charAfterOpen === '\t' || charAfterOpen === '\n' || charAfterOpen === '') {
+      result += text[i++];
+      continue;
+    }
+
+    // Scan for closing $ on the same line
+    let j = i + 1;
+    let found = false;
+    while (j < n && text[j] !== '\n') {
+      if (text[j] === '$' && text[j - 1] !== '\\') {
+        // Closing $ must not be preceded by space
+        const charBeforeClose = text[j - 1];
+        if (charBeforeClose === ' ' || charBeforeClose === '\t') {
+          j++;
+          continue;
+        }
+        // Closing $ must not be immediately followed by a digit
+        const charAfterClose = j + 1 < n ? text[j + 1] : '';
+        if (/\d/.test(charAfterClose)) {
+          j++;
+          continue;
+        }
+        found = true;
+        break;
+      }
+      j++;
+    }
+
+    if (!found) {
+      // No valid closing $ on this line → treat as plain text
+      result += text[i++];
+      continue;
+    }
+
+    // We have a candidate: text[openPos+1 .. j-1]
+    const content = text.slice(openPos + 1, j);
+
+    // If content starts with a digit, check if it looks like math
+    if (/^\d/.test(content)) {
+      if (!looksLikeMath(content)) {
+        // Plain currency — emit the $ literally and continue from after the $
+        result += text[i++];
+        continue;
+      }
+    }
+
+    // It's math — store it
+    result += store(content, false);
+    i = j + 1; // advance past the closing $
+  }
+
+  return result;
+}
+
 function extractMath(text) {
   const exprs = []; // { latex: string, display: boolean }
 
@@ -122,35 +234,13 @@ function extractMath(text) {
   result = result.replace(/\\{1,2}\(([\s\S]*?)\\{1,2}\)/g, (_m, latex) => store(latex, false));
 
   // 4. Inline math: $...$
-  //    Primary currency guard: pre-replace isolated currency amounts like $5, $10, $15.50
-  //    with neutral placeholders so the non-greedy $...$ regex cannot span across them
-  //    on the same line (e.g. "$5, while a full meal costs $10" previously matched the
-  //    entire span as a single math expression).
-  const currencyPlaceholders = [];
-  result = result.replace(/\$(\d+(?:[.,]\d+)*)\b/g, (match) => {
-    const idx = currencyPlaceholders.length;
-    currencyPlaceholders.push(match);
-    return `CURRENCY_${idx}`;
-  });
-
-  //    Secondary heuristic (retained as extra guard): skip $...$ if opening $ is
-  //    immediately followed by a digit AND closing $ is followed by whitespace/punctuation.
-  result = result.replace(/\$([^$\n]+?)\$/g, (match, latex, offset, str) => {
-    const firstChar = latex[0];
-    if (/\d/.test(firstChar)) {
-      const closePos = offset + match.length;
-      const charAfterClose = closePos < str.length ? str[closePos] : '';
-      if (/[\s,.\u2019\u201d;:!?)]/.test(charAfterClose) || charAfterClose === '') {
-        return match; // keep as plain text
-      }
-    }
-    return store(latex, false);
-  });
-
-  // Restore currency placeholders (reverse order for safety)
-  for (let i = currencyPlaceholders.length - 1; i >= 0; i--) {
-    result = result.replace(`CURRENCY_${i}`, () => currencyPlaceholders[i]);
-  }
+  //    Use a left-to-right character scanner instead of a blind global regex.
+  //    This correctly handles:
+  //      - $2 \cdot L \cdot n_{\text{heads}}...$ → math (contains \, {, })
+  //      - $B = 1$ → math (contains =)
+  //      - $5, $10, $15.50 → plain currency (digits/punctuation only)
+  //      - $50/month → math (contains letter 'm')
+  result = extractInlineDollarMath(result, store);
 
   return { result, exprs };
 }

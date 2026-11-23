@@ -72,15 +72,22 @@ body {
 
 .preview-container table {
   width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   margin: 1.5em 0;
+  overflow-x: hidden;
 }
 
 .preview-container th, 
 .preview-container td {
   border: 1px solid #e2e8f0;
-  padding: 0.5rem 1rem;
+  padding: 5px 6px;
   text-align: left;
+  font-size: 0.85em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
 }
 
 .preview-container tr:nth-child(even) {
@@ -163,12 +170,17 @@ body {
 }
 
 @media print {
-  /* CRITICAL: un-clip the document so multi-page content prints fully */
+  /* CRITICAL: un-clip the document so multi-page content prints fully.
+     html and body have height/overflow set by Tailwind base styles;
+     #root, the flex-col h-screen wrapper, main, and the flex children
+     all need unconstrained height so Chrome doesn't clip to page 1. */
   html, body, #root {
     height: auto !important;
-    min-height: unset !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
     display: block !important;
+    position: static !important;
   }
 
   /* Hide all app chrome */
@@ -181,54 +193,83 @@ body {
     display: none !important;
   }
 
-  /* Show only the preview content */
+  /* Main layout container: was flex-col h-screen overflow-hidden */
   main {
     display: block !important;
     overflow: visible !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    position: static !important;
+    flex: none !important;
   }
 
-  /* Hide the editor pane (first child of main) */
+  /* Hide the editor pane (first child of main) — covers both mobile overlay and desktop half */
   main > div:first-child {
     display: none !important;
   }
 
-  /* The preview pane div (second child of main) */
+  /* The preview pane wrapper div (second child of main):
+     was flex flex-col md:w-1/2 bg-slate-50 min-h-0 */
   main > div:last-child {
     display: block !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
     padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     box-shadow: none !important;
     background: white !important;
+    flex: none !important;
   }
 
-  /* Hide the Live Preview toolbar bar inside the preview pane */
+  /* Hide the "Live Preview" toolbar bar inside the preview pane */
   main > div:last-child > div:first-child {
     display: none !important;
   }
 
-  /* Show the scrollable content wrapper */
+  /* The inner scroll wrapper: was flex-1 overflow-auto bg-white p-4 md:p-6 min-h-0 */
   main > div:last-child > div:last-child {
     display: block !important;
     overflow: visible !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     padding: 0 !important;
+    flex: none !important;
   }
 
-  /* Preview container itself */
+  /* Preview container itself (the innermost content wrapper rendered by Preview.jsx) */
   .preview-container {
     display: block !important;
     width: 100% !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     overflow: visible !important;
     padding: 0 !important;
     margin: 0 !important;
-    max-width: 100% !important;
+    max-width: none !important;
     box-shadow: none !important;
+  }
+
+  /* Table print styles */
+  .preview-container table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important;
+    font-size: 8.5pt !important;
+  }
+
+  .preview-container table th,
+  .preview-container table td {
+    font-size: 8.5pt !important;
+    padding: 4px 5px !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
   }
 
   /* Pagination rules */
