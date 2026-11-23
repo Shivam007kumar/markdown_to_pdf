@@ -193,6 +193,19 @@ body {
     display: none !important;
   }
 
+  /* #root > div: the outermost content wrapper (flex flex-col h-screen overflow-hidden)
+     This is the direct clip culprit — height:100vh + overflow:hidden stays in force
+     unless explicitly overridden because CSS overflow does not inherit. */
+  #root > div {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    display: block !important;
+    position: static !important;
+    flex: none !important;
+  }
+
   /* Main layout container: was flex-col h-screen overflow-hidden */
   main {
     display: block !important;
