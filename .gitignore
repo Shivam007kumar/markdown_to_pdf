@@ -17,3 +17,6 @@ backend/.pytest_cache/
 
 # Keys
 md2pdf-key.pem
+*.pem
+.agents/
+.worktrees/
