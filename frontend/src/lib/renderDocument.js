@@ -101,7 +101,10 @@ function maskCodeBlocks(text) {
 }
 
 // ---------------------------------------------------------------------------
-// Step A5: Extract math expressions
+// Step A4b: Currency pre-replacement
+//           Replaces currency patterns like $5, $10.50, $1,000 with
+//           @@CURR_N@@ tokens BEFORE math extraction to prevent false positives.
+//           The scanner is left-to-right like extractInlineDollarMath.
 // ---------------------------------------------------------------------------
 
 /**
@@ -117,6 +120,57 @@ function looksLikeMath(content) {
   if (/^[\d,. ]+$/.test(content)) return false;
   // Contains LaTeX syntax characters or letters → treat as math
   return /[\\^_{}\=+\-*/<>a-zA-Z]/.test(content);
+}
+
+/**
+ * Pre-replaces currency amounts like $5, $10.50, $1,000 with @@CURR_N@@ tokens.
+ * Returns { result, currStore } where currStore[N] is the original "$..." text.
+ *
+ * This runs AFTER code masking (so $PATH in code blocks is already protected)
+ * and BEFORE extractMath, ensuring the math scanner never sees currency dollars.
+ *
+ * A token is treated as currency ONLY when:
+ *  - $ is followed by digits (no space)
+ *  - The digits (and optional commas/periods) end at a non-math boundary
+ *    (whitespace, punctuation like , . ) ] ' " or end of line)
+ *  - There is no closing $ on the same line that would make a valid math pair
+ *    (i.e. no subsequent $ on the same line after the numeric content)
+ *
+ * "$2 \cdot L ... $" will NOT be pre-replaced because there's a closing $ later.
+ * "$5, " WILL be pre-replaced because there's no closing $ on the same line.
+ */
+function extractCurrency(text) {
+  const currStore = [];
+
+  // Split into lines. On each line, scan for $<digits>[,.digits]* patterns.
+  // Only replace a $ if the same line does NOT have a later $ (which would form math).
+  const lines = text.split('\n');
+  const resultLines = lines.map((line) => {
+    return line.replace(/(?<!\\)\$(\d[\d,.]*)/g, (match, digits, offset) => {
+      // Check if looksLikeMath could apply — pure digits/commas/periods → definitely currency
+      if (looksLikeMath(digits)) return match; // let math scanner handle ($2 \cdot... type)
+
+      // Look for a later $ on the same line (after the end of this match)
+      const afterMatch = offset + match.length;
+      const restOfLine = line.slice(afterMatch);
+      // If there's another $ later on the line, this $N could be the opening of a math pair
+      // (e.g. "$2 for $5" — the $2 has a later $ on the same line but doesn't form math).
+      // However, we need to guard against "$2 \cdot ... $" being split.
+      // The safe heuristic: if the character after the digits is a space and the rest of the
+      // line contains a $ that could close a math expression, leave it for the math scanner.
+      if (/\$/.test(restOfLine)) {
+        // Another $ exists later — let the math scanner decide.
+        return match;
+      }
+
+      // Safe to replace as currency
+      const idx = currStore.length;
+      currStore.push(match);
+      return `@@CURR_${idx}@@`;
+    });
+  });
+
+  return { result: resultLines.join('\n'), currStore };
 }
 
 /**
@@ -270,12 +324,18 @@ export async function renderDocument(markdownText) {
   // A2: Mask remaining code blocks (protects $ in code from math extraction)
   const { result: maskedCode, store: codeStore } = maskCodeBlocks(withOfflineDiagrams);
 
+  // A4b: Pre-replace currency amounts ($5, $10.50, $1,000) with @@CURR_N@@ tokens
+  //      so the math scanner never sees them and can't mistake them for math.
+  const { result: noCurrency, currStore } = extractCurrency(maskedCode);
+
   // A5: Extract math expressions
-  const { result: noMath, exprs: mathExprs } = extractMath(maskedCode);
+  const { result: noMath, exprs: mathExprs } = extractMath(noCurrency);
 
   // Restore code placeholders — let markdown-it render them naturally
   let textForMd = noMath;
   textForMd = textForMd.replace(/@@CODE_(\d+)@@/g, (_, idx) => codeStore[+idx]);
+  // Restore currency placeholders as plain text
+  textForMd = textForMd.replace(/@@CURR_(\d+)@@/g, (_, idx) => currStore[+idx]);
 
   // A6: markdown-it render
   let rawHtml = md.render(textForMd);

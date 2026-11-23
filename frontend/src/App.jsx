@@ -264,7 +264,7 @@ function App() {
         />
 
         {/* Landscape/Portrait pill toggle */}
-        <div className="hidden md:flex orientation-toggle" role="group" aria-label="Page orientation">
+        <div className={`hidden md:flex orientation-toggle${landscape ? ' landscape' : ''}`} role="group" aria-label="Page orientation">
           <button
             className={`orientation-option${!landscape ? ' active' : ''}`}
             onClick={() => setLandscape(false)}

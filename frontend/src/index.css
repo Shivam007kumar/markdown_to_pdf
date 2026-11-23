@@ -203,33 +203,61 @@ body {
 
 /* ============================================================
    Orientation pill toggle (Portrait ↔ Landscape)
+   Implements a sliding white thumb using an absolutely-positioned
+   ::before pseudo-element that translates between the two sides.
    ============================================================ */
 .orientation-toggle {
   display: flex;
+  position: relative;
   background: #e5e7eb;
   border-radius: 9999px;
   padding: 2px;
   gap: 0;
 }
 
+/* Sliding white thumb — covers whichever button is active */
+.orientation-toggle::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  /* Width = 50% of the container minus the 2px padding on each side */
+  width: calc(50% - 2px);
+  left: 2px;
+  border-radius: 9999px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* When landscape is active (second button), slide the thumb to the right */
+.orientation-toggle.landscape::before {
+  transform: translateX(calc(100% + 0px));
+}
+
 .orientation-option {
+  position: relative;
+  z-index: 1;
+  flex: 1;
   border-radius: 9999px;
   padding: 3px 10px;
   font-size: 0.8rem;
   cursor: pointer;
   border: none;
-  transition: background 0.2s, color 0.2s;
   background: transparent;
   color: #6b7280;
   font-weight: 500;
   line-height: 1.5;
   white-space: nowrap;
+  transition: color 0.2s;
 }
 
 .orientation-option.active {
-  background: white;
   color: #111827;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  background: transparent; /* thumb is handled by ::before */
+  box-shadow: none;
 }
 
 @media print {

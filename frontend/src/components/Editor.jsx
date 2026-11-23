@@ -93,7 +93,7 @@ function Editor({ value, onChange, onImageAdded, onHasDoubleEscapedMath, spellch
   // Dispose the WorkerLinter when this component unmounts
   useEffect(() => {
     return () => {
-      disposeSpellcheckLinter();
+      disposeSpellcheckLinter().catch(console.warn);
     };
   }, []);
 
