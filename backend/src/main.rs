@@ -364,6 +364,7 @@ async fn health_handler(State(state): State<AppState>) -> (StatusCode, Json<Heal
 
 async fn share_post_handler(
     State(state): State<AppState>,
+    axum::extract::ConnectInfo(peer): axum::extract::ConnectInfo<SocketAddr>,
     headers: HeaderMap,
     body: axum::extract::Json<ShareRequest>,
 ) -> Result<(StatusCode, Json<ShareCreatedResponse>), (StatusCode, Json<ErrorResponse>)> {
@@ -413,7 +414,8 @@ async fn share_post_handler(
     let custom_css = sanitize_css(&req.custom_css);
 
     // --- Rate limiting ---
-    let client_ip = extract_client_ip(&headers, None);
+    let peer_ip = peer.ip().to_string();
+    let client_ip = extract_client_ip(&headers, Some(&peer_ip));
     let rate_key = format!("rate:{}:{}", client_ip, current_minute());
     let mut conn = state.redis.clone();
 
@@ -474,7 +476,17 @@ async fn share_post_handler(
     let redis_key = format!("share:{}", id);
     let ttl = state.config.share_ttl_seconds as usize;
 
-    let _: redis::RedisResult<()> = conn.set_ex(&redis_key, compressed, ttl as u64).await;
+    conn.set_ex::<_, _, ()>(&redis_key, compressed, ttl as u64)
+        .await
+        .map_err(|e| {
+            tracing::error!("Redis write error for share {}: {}", id, e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse {
+                    error: "storage error".to_string(),
+                }),
+            )
+        })?;
 
     Ok((
         StatusCode::CREATED,
@@ -617,7 +629,9 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .expect("Failed to bind");
-    axum::serve(listener, app).await.expect("Server error");
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .await
+        .expect("Server error");
 }
 
 // ---------------------------------------------------------------------------
@@ -629,9 +643,18 @@ mod tests {
     use super::*;
     use axum::{
         body::Body,
+        extract::connect_info::MockConnectInfo,
         http::{Request, StatusCode},
     };
+    use std::net::SocketAddr;
     use tower::ServiceExt;
+
+    /// Wrap the router with a mock peer address so ConnectInfo is available in tests.
+    fn test_app(state: AppState) -> axum::Router {
+        let max_body = state.config.max_body_bytes;
+        build_router(state, max_body)
+            .layer(MockConnectInfo(SocketAddr::from(([127, 0, 0, 1], 12345))))
+    }
 
     // --- Unit: ID validation & generation ---
 
@@ -862,8 +885,7 @@ mod tests {
                 return;
             }
         };
-        let max_body = state.config.max_body_bytes;
-        let app = build_router(state, max_body);
+        let app = test_app(state);
 
         let req = Request::builder()
             .method("GET")
@@ -891,8 +913,7 @@ mod tests {
                 return;
             }
         };
-        let max_body = state.config.max_body_bytes;
-        let app = build_router(state, max_body);
+        let app = test_app(state);
 
         // POST /share
         let body = serde_json::json!({
@@ -947,8 +968,7 @@ mod tests {
                 return;
             }
         };
-        let max_body = state.config.max_body_bytes;
-        let app = build_router(state, max_body);
+        let app = test_app(state);
 
         let req = Request::builder()
             .method("GET")
@@ -972,7 +992,6 @@ mod tests {
 
         // Use a unique test IP to avoid interference with other tests
         let test_ip = format!("test-ratelimit-{}", generate_id());
-        let max_body = state.config.max_body_bytes;
         let rate_limit = state.config.rate_limit_per_min;
 
         // Clear any pre-existing rate key
@@ -982,7 +1001,7 @@ mod tests {
             let _: redis::RedisResult<()> = conn.del(&rate_key).await;
         }
 
-        let app = build_router(state, max_body);
+        let app = test_app(state);
 
         let body = serde_json::json!({
             "markdown": "test"
@@ -1035,8 +1054,7 @@ mod tests {
                 return;
             }
         };
-        let max_body = state.config.max_body_bytes;
-        let app = build_router(state, max_body);
+        let app = test_app(state);
 
         for bad_id in &["short", "toolong1234567", "bad!char12345"] {
             let req = Request::builder()
