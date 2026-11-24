@@ -243,14 +243,14 @@ function App() {
       <WebViewBanner />
       {/* Header */}
       <header className="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-white z-10 shrink-0">
-        <div className="flex items-center gap-2 md:gap-3">
-          <div className="w-8 h-8 md:w-10 md:h-10 flex items-center justify-center rounded-lg md:rounded-xl bg-white p-1 md:p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
+        <div className="flex items-center gap-2 md:gap-3 min-w-0 shrink">
+          <div className="w-8 h-8 md:w-10 md:h-10 flex shrink-0 items-center justify-center rounded-lg md:rounded-xl bg-white p-1 md:p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
             <img src="/docs.png" alt="MD2PDF Logo" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <h1 className="text-xl md:text-2xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent leading-none">MD2PDF</h1>
             {saveStatus === 'saving' && <span className="text-[10px] md:text-[11px] text-slate-400 font-medium mt-0.5 animate-pulse">Saving...</span>}
-            {saveStatus === 'saved' && <span className="text-[10px] md:text-[11px] text-emerald-500 font-medium mt-0.5">All changes saved locally</span>}
+            {saveStatus === 'saved' && <span className="text-[10px] md:text-[11px] text-emerald-500 font-medium mt-0.5 truncate">Saved</span>}
           </div>
         </div>
 
@@ -291,10 +291,10 @@ function App() {
           <span>Spellcheck</span>
         </button>
         
-        <div className="flex justify-end items-center gap-2 md:gap-3">
+        <div className="flex shrink-0 justify-end items-center gap-2 md:gap-3">
           <button
             onClick={handleClearDocument}
-            className="flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-1.5 h-9 rounded-xl hover:bg-red-50"
+            className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-1.5 h-9 rounded-xl hover:bg-red-50"
             title="Clear Document"
           >
             <Trash2 className="w-4 h-4 md:w-4 md:h-4" />
