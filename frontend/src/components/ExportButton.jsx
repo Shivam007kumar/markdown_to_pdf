@@ -41,7 +41,7 @@ function ExportButton({ title, landscape, isPrinting }) {
       onClick={handleExport}
       disabled={isPrinting}
       title="Tip: Turn off 'Headers and footers' in Chrome's print dialog."
-      className={`export-button flex items-center gap-2 px-3 py-1.5 h-9 rounded-lg font-semibold transition-all shadow-lg active:scale-95 text-sm ${
+      className={`export-button flex items-center gap-2 px-2.5 py-1.5 h-8 md:h-9 rounded-lg font-semibold transition-all shadow-lg active:scale-95 text-xs md:px-3 md:text-sm ${
         isPrinting
           ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
           : 'bg-slate-900 text-white hover:bg-slate-800'
