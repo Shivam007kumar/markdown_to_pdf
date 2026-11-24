@@ -242,8 +242,10 @@ function App() {
     <div className="app-shell flex flex-col h-screen bg-white font-sans text-slate-900 overflow-hidden relative">
       <WebViewBanner />
       {/* Header */}
-      <header className="flex justify-between items-center px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-white z-10 shrink-0">
-        <div className="flex items-center gap-2 md:gap-3 min-w-0 shrink">
+      <header className="flex flex-wrap items-center gap-x-2 gap-y-2 px-4 md:px-6 py-3 md:py-4 border-b border-slate-200 bg-white z-10 shrink-0">
+
+        {/* Row 1 left: Logo + MD2PDF + save status */}
+        <div className="order-1 flex items-center gap-2 md:gap-3 min-w-0 shrink">
           <div className="w-8 h-8 md:w-10 md:h-10 flex shrink-0 items-center justify-center rounded-lg md:rounded-xl bg-white p-1 md:p-1.5 shadow-sm border border-slate-200/60 transition-transform hover:scale-105">
             <img src="/docs.png" alt="MD2PDF Logo" className="w-full h-full object-contain drop-shadow-sm" />
           </div>
@@ -254,66 +256,82 @@ function App() {
           </div>
         </div>
 
-        {/* Title input */}
-        <input
-          type="text"
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          placeholder="Document title…"
-          className="hidden md:block border border-gray-300 rounded-md px-3 py-1 text-sm font-semibold text-gray-800 bg-white max-w-xs focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:font-normal placeholder:text-gray-400"
-        />
-
-        {/* Landscape/Portrait pill toggle */}
-        <div className={`hidden md:flex orientation-toggle${landscape ? ' landscape' : ''}`} role="group" aria-label="Page orientation">
-          <button
-            className={`orientation-option${!landscape ? ' active' : ''}`}
-            onClick={() => setLandscape(false)}
-            aria-pressed={!landscape}
-          >
-            📄 Portrait
-          </button>
-          <button
-            className={`orientation-option${landscape ? ' active' : ''}`}
-            onClick={() => setLandscape(true)}
-            aria-pressed={landscape}
-          >
-            🖥 Landscape
-          </button>
+        {/* Row 1 right: Share + Export PDF (ml-auto pushes to far right on Row 1) */}
+        <div className="order-2 flex shrink-0 items-center gap-2 ml-auto">
+          <ExportButton title={title} landscape={landscape} isPrinting={isMermaidRendering} />
+          <ShareButton title={title} markdown={resolvedMarkdownForExport} customCss={customCss} />
         </div>
 
-        {/* Spellcheck toggle */}
-        <button
-          onClick={() => setSpellcheckEnabled(prev => !prev)}
-          title={spellcheckEnabled ? 'Disable spellcheck' : 'Enable spellcheck'}
-          className={`hidden md:flex items-center gap-1.5 text-sm font-medium border rounded-lg px-3 py-1.5 h-9 transition-colors ${spellcheckEnabled ? 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-        >
-          <SpellCheck className="w-4 h-4" />
-          <span>Spellcheck</span>
-        </button>
-        
-        <div className="flex shrink-0 justify-end items-center gap-2 md:gap-3">
+        {/* Row 2 on mobile / inline on desktop: title input + orientation toggle + spellcheck + clear + github */}
+        <div className="order-3 w-full md:w-auto md:flex-1 md:order-none flex items-center gap-2">
+
+          {/* Title input: full-width on mobile, constrained on desktop */}
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Document title…"
+            className="flex-1 min-w-0 md:max-w-xs border border-gray-300 rounded-md px-3 py-1 text-sm font-semibold text-gray-800 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none placeholder:font-normal placeholder:text-gray-400"
+          />
+
+          {/* Compact orientation toggle — mobile only */}
+          <button
+            className="md:hidden shrink-0 text-xs font-medium px-2.5 py-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-slate-600 h-8"
+            onClick={() => setLandscape(prev => !prev)}
+            aria-label="Toggle orientation"
+          >
+            {landscape ? '🖥 Land.' : '📄 Port.'}
+          </button>
+
+          {/* Full animated pill — desktop only */}
+          <div className={`hidden md:flex orientation-toggle${landscape ? ' landscape' : ''}`} role="group" aria-label="Page orientation">
+            <button
+              className={`orientation-option${!landscape ? ' active' : ''}`}
+              onClick={() => setLandscape(false)}
+              aria-pressed={!landscape}
+            >
+              📄 Portrait
+            </button>
+            <button
+              className={`orientation-option${landscape ? ' active' : ''}`}
+              onClick={() => setLandscape(true)}
+              aria-pressed={landscape}
+            >
+              🖥 Landscape
+            </button>
+          </div>
+
+          {/* Spellcheck toggle */}
+          <button
+            onClick={() => setSpellcheckEnabled(prev => !prev)}
+            title={spellcheckEnabled ? 'Disable spellcheck' : 'Enable spellcheck'}
+            className={`flex shrink-0 items-center gap-1.5 text-sm font-medium border rounded-lg px-2.5 py-1.5 h-8 md:h-9 transition-colors ${spellcheckEnabled ? 'text-blue-700 border-blue-200 bg-blue-50 hover:bg-blue-100' : 'text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+          >
+            <SpellCheck className="w-4 h-4" />
+            <span className="hidden md:inline">Spellcheck</span>
+          </button>
+
+          {/* Clear button */}
           <button
             onClick={handleClearDocument}
-            className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-1.5 h-9 rounded-xl hover:bg-red-50"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-red-600 transition-colors p-2 md:px-3 md:py-1.5 h-8 md:h-9 rounded-xl hover:bg-red-50"
             title="Clear Document"
           >
-            <Trash2 className="w-4 h-4 md:w-4 md:h-4" />
+            <Trash2 className="w-4 h-4" />
             <span className="hidden lg:inline">Clear</span>
           </button>
-          
-          {/* Desktop Github Link */}
+
+          {/* GitHub link — desktop only */}
           <a
             href="https://github.com/Shivam007kumar/markdown_to_pdf"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden md:flex items-center gap-2 text-sm font-semibold text-slate-700 border border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 px-3 py-1.5 h-9 rounded-lg transition-all"
+            className="hidden md:flex shrink-0 items-center gap-2 text-sm font-semibold text-slate-700 border border-gray-300 bg-white hover:bg-gray-50 hover:border-gray-400 px-3 py-1.5 h-9 rounded-lg transition-all"
             title="Star us on GitHub!"
           >
             <Github className="w-4 h-4" />
             <span className="hidden lg:inline">Star on GitHub</span>
           </a>
-          <ExportButton title={title} landscape={landscape} isPrinting={isMermaidRendering} />
-          <ShareButton title={title} markdown={resolvedMarkdownForExport} customCss={customCss} />
         </div>
       </header>
 
@@ -413,8 +431,8 @@ function App() {
         </div>
       </main>
 
-      {/* Floating Star on Mobile Only */}
-      <div className={`md:hidden fixed bottom-6 left-4 z-40 transition-all duration-300 ${activeMobileView !== 'preview' ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
+      {/* Floating Star on Desktop Only */}
+      <div className={`hidden md:flex fixed bottom-6 left-4 z-40 transition-all duration-300 ${activeMobileView !== 'preview' ? 'opacity-0 pointer-events-none translate-y-4' : 'opacity-100 translate-y-0'}`}>
         <div className="relative flex items-center">
           
           {/* Fading Tooltip */}
